@@ -1,7 +1,10 @@
 package com.sometenn.callcaptions.ui.home
 
+import android.app.Activity
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.sometenn.callcaptions.capture.MediaProjectionConsentCoordinator
 import com.sometenn.callcaptions.core.AudioSource
 import com.sometenn.callcaptions.core.CaptionDisplayMode
 import com.sometenn.callcaptions.core.OverlaySink
@@ -18,10 +21,20 @@ class HomeViewModel(
     private val session: Session,
     private val overlaySink: OverlaySink,
     val overlayState: StateFlow<OverlayUiState>,
+    private val consentCoordinator: MediaProjectionConsentCoordinator = MediaProjectionConsentCoordinator(),
     private val clearOverlayNoticeAction: () -> Unit = {},
 ) : ViewModel() {
 
     val sessionState: StateFlow<SessionState> = session.state
+    val mediaProjectionRequestId: StateFlow<Long?> = consentCoordinator.pendingRequestId
+
+    fun onMediaProjectionResult(resultCode: Int, data: Intent?) {
+        if (resultCode == Activity.RESULT_OK && data != null) {
+            consentCoordinator.onConsentGranted(resultCode, data)
+        } else {
+            consentCoordinator.onConsentDenied()
+        }
+    }
 
     fun selectProvider(provider: Provider) {
         session.select(provider)
@@ -71,6 +84,7 @@ class HomeViewModel(
         fun factory(
             session: Session,
             overlay: AndroidOverlayController,
+            consentCoordinator: MediaProjectionConsentCoordinator,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -78,6 +92,7 @@ class HomeViewModel(
                     session = session,
                     overlaySink = overlay,
                     overlayState = overlay.uiState,
+                    consentCoordinator = consentCoordinator,
                     clearOverlayNoticeAction = { overlay.clearNotice() },
                 ) as T
             }
@@ -87,10 +102,12 @@ class HomeViewModel(
             session: Session,
             overlaySink: OverlaySink = session.overlay,
             overlayState: MutableStateFlow<OverlayUiState> = MutableStateFlow(OverlayUiState()),
+            consentCoordinator: MediaProjectionConsentCoordinator = MediaProjectionConsentCoordinator(),
         ): HomeViewModel = HomeViewModel(
             session = session,
             overlaySink = overlaySink,
             overlayState = overlayState.asStateFlow(),
+            consentCoordinator = consentCoordinator,
         )
     }
 }

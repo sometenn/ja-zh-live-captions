@@ -3,6 +3,7 @@ package com.sometenn.callcaptions.ui.home
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -68,22 +69,40 @@ fun HomeRoute(
 ) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
     val overlayState by viewModel.overlayState.collectAsStateWithLifecycle()
+    val mediaProjectionRequestId by viewModel.mediaProjectionRequestId.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showKeySheet by remember { mutableStateOf(false) }
-    var pendingMicMode by remember { mutableStateOf<Session.Mode?>(null) }
+    var pendingCaptureMode by remember { mutableStateOf<Session.Mode?>(null) }
 
-    val micPermissionLauncher = rememberLauncherForActivityResult(
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) { results ->
-        val mode = pendingMicMode
-        pendingMicMode = null
+        val mode = pendingCaptureMode
+        pendingCaptureMode = null
         val micGranted = results[Manifest.permission.RECORD_AUDIO] == true ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         if (micGranted && mode != null) {
             when (mode) {
                 Session.Mode.TRANSLATE -> viewModel.beginTranslate()
                 Session.Mode.PROBE -> viewModel.beginProbe()
+            }
+        }
+    }
+
+    val mediaProjectionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        viewModel.onMediaProjectionResult(result.resultCode, result.data)
+    }
+
+    LaunchedEffect(mediaProjectionRequestId) {
+        if (mediaProjectionRequestId != null) {
+            val manager = context.getSystemService(MediaProjectionManager::class.java)
+            if (manager != null) {
+                mediaProjectionLauncher.launch(manager.createScreenCaptureIntent())
+            } else {
+                viewModel.onMediaProjectionResult(android.app.Activity.RESULT_CANCELED, null)
             }
         }
     }
@@ -98,22 +117,22 @@ fun HomeRoute(
     }
 
     fun startWithPermissions(mode: Session.Mode) {
-        if (sessionState.source == AudioSource.MICROPHONE) {
-            val required = buildList {
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                    add(Manifest.permission.RECORD_AUDIO)
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    add(Manifest.permission.POST_NOTIFICATIONS)
-                }
+        // Both microphone and Android 10+ AudioPlaybackCapture require RECORD_AUDIO,
+        // and Android 13+ foreground services benefit from POST_NOTIFICATIONS.
+        val required = buildList {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                add(Manifest.permission.RECORD_AUDIO)
             }
-            if (required.isNotEmpty()) {
-                pendingMicMode = mode
-                micPermissionLauncher.launch(required.toTypedArray())
-                return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
             }
+        }
+        if (required.isNotEmpty()) {
+            pendingCaptureMode = mode
+            audioPermissionLauncher.launch(required.toTypedArray())
+            return
         }
         when (mode) {
             Session.Mode.TRANSLATE -> viewModel.beginTranslate()
@@ -347,7 +366,7 @@ fun HomeScreen(
                     text = if (sessionState.source == AudioSource.MICROPHONE) {
                         "对着麦克风说话，观察音量条是否跳动。测试仅在本机运行。"
                     } else {
-                        "机内声音（MediaProjection）将在阶段 3 接入；当前可先切换为「麦克风」测试音量与实时翻译。"
+                        "测试时戴上耳机，在系统窗口中允许共享整个屏幕，开启悬浮字幕后再切回通话。请对方说话，观察音量条是否跳动。声音测试仅在本机运行；若目标应用禁止被捕获播放音频，音量条可能保持静止。"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

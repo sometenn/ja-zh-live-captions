@@ -19,6 +19,7 @@ class MainActivity : ComponentActivity() {
         HomeViewModel.factory(
             session = container.session,
             overlay = container.overlay,
+            consentCoordinator = container.consentCoordinator,
         )
     }
 

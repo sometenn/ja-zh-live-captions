@@ -16,12 +16,19 @@ import androidx.core.content.ContextCompat
 import com.sometenn.callcaptions.CallCaptionsApplication
 import com.sometenn.callcaptions.MainActivity
 import com.sometenn.callcaptions.R
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeout
 
 /**
- * Foreground service keeping microphone capture and live translation alive
+ * Foreground service keeping microphone or MediaProjection capture alive
  * while the user switches to another app.
  */
 class CaptionForegroundService : Service() {
+
+    enum class CaptureType {
+        MICROPHONE,
+        MEDIA_PROJECTION,
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -33,7 +40,13 @@ class CaptionForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP_SESSION -> {
-                (application as? CallCaptionsApplication)?.container?.session?.finish("已从通知栏结束收音。")
+                val type = parseCaptureType(intent)
+                val msg = if (type == CaptureType.MEDIA_PROJECTION) {
+                    "已从通知栏结束声音共享。"
+                } else {
+                    "已从通知栏结束收音。"
+                }
+                (application as? CallCaptionsApplication)?.container?.session?.finish(msg)
                 stopForegroundCompat()
                 stopSelf()
                 return START_NOT_STICKY
@@ -44,21 +57,38 @@ class CaptionForegroundService : Service() {
                 return START_NOT_STICKY
             }
             else -> {
-                val notification = buildNotification()
-                val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                } else {
-                    0
+                val type = parseCaptureType(intent)
+                val notification = buildNotification(type)
+                val fgsType = when (type) {
+                    CaptureType.MICROPHONE -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                    } else {
+                        0
+                    }
+                    CaptureType.MEDIA_PROJECTION -> ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
                 }
-                ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, type)
+                try {
+                    ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, fgsType)
+                    readyDeferred?.complete(Unit)
+                } catch (e: Throwable) {
+                    readyDeferred?.completeExceptionally(e)
+                    stopSelf()
+                }
                 return START_NOT_STICKY
             }
         }
     }
 
     override fun onDestroy() {
+        readyDeferred?.cancel()
+        readyDeferred = null
         stopForegroundCompat()
         super.onDestroy()
+    }
+
+    private fun parseCaptureType(intent: Intent?): CaptureType {
+        val raw = intent?.getStringExtra(EXTRA_CAPTURE_TYPE)
+        return CaptureType.entries.firstOrNull { it.name == raw } ?: CaptureType.MICROPHONE
     }
 
     private fun stopForegroundCompat() {
@@ -81,7 +111,7 @@ class CaptionForegroundService : Service() {
         }
     }
 
-    private fun buildNotification(): Notification {
+    private fun buildNotification(type: CaptureType): Notification {
         val openIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -94,6 +124,7 @@ class CaptionForegroundService : Service() {
 
         val stopIntent = Intent(this, CaptionForegroundService::class.java).apply {
             action = ACTION_STOP_SESSION
+            putExtra(EXTRA_CAPTURE_TYPE, type.name)
         }
         val stopPendingIntent = PendingIntent.getService(
             this,
@@ -102,14 +133,21 @@ class CaptionForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val contentText = if (type == CaptureType.MEDIA_PROJECTION) {
+            "正在共享机内声音，点此返回应用"
+        } else {
+            "正在使用麦克风收音，点此返回应用"
+        }
+        val actionLabel = if (type == CaptureType.MEDIA_PROJECTION) "结束共享" else "结束收音"
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(getString(R.string.app_name))
-            .setContentText("正在使用麦克风收音，点此返回应用")
+            .setContentText(contentText)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(openPendingIntent)
-            .addAction(0, "结束收音", stopPendingIntent)
+            .addAction(0, actionLabel, stopPendingIntent)
             .build()
     }
 
@@ -119,15 +157,39 @@ class CaptionForegroundService : Service() {
         private const val ACTION_START = "com.sometenn.callcaptions.action.START"
         private const val ACTION_STOP_SERVICE = "com.sometenn.callcaptions.action.STOP_SERVICE"
         private const val ACTION_STOP_SESSION = "com.sometenn.callcaptions.action.STOP_SESSION"
+        private const val EXTRA_CAPTURE_TYPE = "extra_capture_type"
 
-        fun start(context: Context) {
+        @Volatile
+        private var readyDeferred: CompletableDeferred<Unit>? = null
+
+        fun start(context: Context, captureType: CaptureType = CaptureType.MICROPHONE) {
             val intent = Intent(context.applicationContext, CaptionForegroundService::class.java).apply {
                 action = ACTION_START
+                putExtra(EXTRA_CAPTURE_TYPE, captureType.name)
             }
             ContextCompat.startForegroundService(context.applicationContext, intent)
         }
 
+        /**
+         * Starts the foreground service and suspends until [ServiceCompat.startForeground]
+         * has executed, which Android 14+ requires before calling `getMediaProjection`.
+         */
+        suspend fun startAndAwaitReady(
+            context: Context,
+            captureType: CaptureType,
+            timeoutMs: Long = 5_000L,
+        ) {
+            val deferred = CompletableDeferred<Unit>()
+            readyDeferred = deferred
+            start(context, captureType)
+            withTimeout(timeoutMs) {
+                deferred.await()
+            }
+        }
+
         fun stop(context: Context) {
+            readyDeferred?.cancel()
+            readyDeferred = null
             val intent = Intent(context.applicationContext, CaptionForegroundService::class.java).apply {
                 action = ACTION_STOP_SERVICE
             }
