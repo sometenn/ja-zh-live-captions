@@ -203,8 +203,12 @@ final class Session: ObservableObject {
         lastSignal = nil
         lastBuffer = nil
         stage = .picking
+        #if MAC_CAPTIONS
+        status = source == .system ? "请选择要收音的应用或屏幕" : "正在开启麦克风"
+        #else
         status = source == .system ? "请在系统窗口中选择共享整个屏幕" : "正在开启麦克风"
 
+        #endif
         let input = makeCapture(source)
         capture = input
         input.started = { [weak self, weak input] in

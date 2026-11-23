@@ -18,6 +18,7 @@
 		25E7CED9293D43BDA05CB70E /* Gemini.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4C9C3ECC704EC386A2BA22 /* Gemini.swift */; };
 		B14A1F2736456AFF6680D461 /* ThirdPartyNotices.txt in Resources */ = {isa = PBXBuildFile; fileRef = FB2EB03E06E9DC271222608C /* ThirdPartyNotices.txt */; };
 		E50435BED9A3DD22916C41D3 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA391201CD02137A96D8F492 /* App.swift */; };
+		CF0000000000000000000001 /* MacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0000000000000000000002 /* MacApp.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +34,7 @@
 		A8792157CB4F27FB949C035F /* CallCaptions.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CallCaptions.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B2FFFE0469AF5AC44A794E7C /* Vault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vault.swift; sourceTree = "<group>"; };
 		CA391201CD02137A96D8F492 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		CF0000000000000000000002 /* MacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacApp.swift; sourceTree = "<group>"; };
 		FB2EB03E06E9DC271222608C /* ThirdPartyNotices.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ThirdPartyNotices.txt; sourceTree = "<group>"; };
 		9CFDAB4100B482EF5CA502A3 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -72,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				CA391201CD02137A96D8F492 /* App.swift */,
+				CF0000000000000000000002 /* MacApp.swift */,
 				6EFBDC3F55E3F4DE990B565F /* Captions.swift */,
 				A70CF0192CD5CDD489C6061A /* Capture.swift */,
 				74B125EF14050CB1986BC089 /* Overlay.swift */,
@@ -148,6 +151,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E50435BED9A3DD22916C41D3 /* App.swift in Sources */,
+				CF0000000000000000000001 /* MacApp.swift in Sources */,
 				66441E86D65854A30DA3CA3B /* Captions.swift in Sources */,
 				195D302E335981A17CB403E5 /* Capture.swift in Sources */,
 				545B0DDB7EF986011144DDC1 /* Overlay.swift in Sources */,
@@ -184,7 +188,13 @@
 				INFOPLIST_FILE = Info.plist;
 				MARKETING_VERSION = 0.3.6;
 				PRODUCT_NAME = CallCaptions;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=macosx*]" = "$(inherited) MAC_CAPTIONS";
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = app.local.callcaptions.mac;
+				"INFOPLIST_FILE[sdk=macosx*]" = MacInfo.plist;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
@@ -211,7 +221,13 @@
 				INFOPLIST_FILE = Info.plist;
 				MARKETING_VERSION = 0.3.6;
 				PRODUCT_NAME = CallCaptions;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=macosx*]" = "$(inherited) MAC_CAPTIONS";
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = app.local.callcaptions.mac;
+				"INFOPLIST_FILE[sdk=macosx*]" = MacInfo.plist;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;

@@ -1,5 +1,6 @@
 import SwiftUI
 
+#if os(iOS)
 @main
 struct CallCaptionsApp: App {
     @StateObject private var session = Session()
@@ -112,7 +113,9 @@ private struct OverlayPanel: View {
     }
 }
 
-private struct KeySheet: View {
+#endif
+
+struct KeySheet: View {
     @ObservedObject var session: Session
     @Environment(\.dismiss) private var dismiss
     @State private var draft = ""
@@ -122,12 +125,14 @@ private struct KeySheet: View {
             Form {
                 Section {
                     SecureField(session.hasKey ? "输入新密钥以替换" : "输入 " + session.provider.rawValue + " API 密钥", text: $draft)
+                        #if os(iOS)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        #endif
                     Button("保存密钥") { store(draft) }.disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     if session.hasKey {
                         Button("移除本机密钥", role: .destructive) { store("") }
                     }
-                } footer: { Text("密钥保存在这台 iPhone 的钥匙串中。") }
+                } footer: { Text("密钥保存在这台设备的钥匙串中。") }
                 if session.provider == .gemini {
                     LabeledContent("实时翻译模型", value: Gemini.model)
                     Text("日语转写和中文翻译共用一条 Gemini 连接，译文以字幕显示。").font(.footnote)
