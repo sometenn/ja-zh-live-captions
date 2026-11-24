@@ -39,6 +39,7 @@
 		CF0000000000000000000004 /* MacCaptionAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacCaptionAppearance.swift; sourceTree = "<group>"; };
 		FB2EB03E06E9DC271222608C /* ThirdPartyNotices.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ThirdPartyNotices.txt; sourceTree = "<group>"; };
 		9CFDAB4100B482EF5CA502A3 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
+		CF0000000000000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				878A52FC5FF6A57D50B7B870 /* Sources */,
+				CF0000000000000000000005 /* macos */,
 				2FAD566AB97C9CDEF9AAE9BD /* Info.plist */,
 				9CFDAB4100B482EF5CA502A3 /* Signing.xcconfig */,
 				8EA9A1C152C253AA57919C6E /* Assets.xcassets */,
@@ -76,8 +78,6 @@
 			isa = PBXGroup;
 			children = (
 				CA391201CD02137A96D8F492 /* App.swift */,
-				CF0000000000000000000002 /* MacApp.swift */,
-				CF0000000000000000000004 /* MacCaptionAppearance.swift */,
 				6EFBDC3F55E3F4DE990B565F /* Captions.swift */,
 				A70CF0192CD5CDD489C6061A /* Capture.swift */,
 				74B125EF14050CB1986BC089 /* Overlay.swift */,
@@ -86,6 +86,24 @@
 				180E8E551CCEA93C5554C323 /* Soniox.swift */,
 				0C4C9C3ECC704EC386A2BA22 /* Gemini.swift */,
 				B2FFFE0469AF5AC44A794E7C /* Vault.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		CF0000000000000000000005 /* macos */ = {
+			isa = PBXGroup;
+			children = (
+				CF0000000000000000000006 /* Sources */,
+				CF0000000000000000000007 /* Info.plist */,
+			);
+			path = macos;
+			sourceTree = "<group>";
+		};
+		CF0000000000000000000006 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				CF0000000000000000000002 /* MacApp.swift */,
+				CF0000000000000000000004 /* MacCaptionAppearance.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -196,7 +214,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=macosx*]" = "$(inherited) MAC_CAPTIONS";
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = app.local.callcaptions.mac;
-				"INFOPLIST_FILE[sdk=macosx*]" = MacInfo.plist;
+				"INFOPLIST_FILE[sdk=macosx*]" = macos/Info.plist;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				TARGETED_DEVICE_FAMILY = 1;
@@ -229,7 +247,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=macosx*]" = "$(inherited) MAC_CAPTIONS";
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = app.local.callcaptions.mac;
-				"INFOPLIST_FILE[sdk=macosx*]" = MacInfo.plist;
+				"INFOPLIST_FILE[sdk=macosx*]" = macos/Info.plist;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				TARGETED_DEVICE_FAMILY = 1;
