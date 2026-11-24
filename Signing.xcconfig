@@ -1,2 +1,0 @@
-PRODUCT_BUNDLE_IDENTIFIER = app.local.callcaptions.jazh27
-#include? "Signing.local.xcconfig"

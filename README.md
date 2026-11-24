@@ -4,28 +4,9 @@ iPhone、Mac 和 Android 上的实时日语转写和简体中文翻译。支持�
 
 当前版本为 **0.3.6（构建 9）**。普通运营商电话音频接入仍在调研。功能边界和真机操作见[使用说明](使用说明.md)。
 
-## 开始开发
+## iOS 版本（`ios/`）
 
-1. 克隆此仓库，在 macOS 上用 Xcode 27 或更新版本打开 `CallCaptions.xcodeproj`。
-2. 真机签名前，在项目根目录创建 `Signing.local.xcconfig`，写入 `DEVELOPMENT_TEAM = 你的团队ID`。如果需要自己的应用 ID，再加一行 `PRODUCT_BUNDLE_IDENTIFIER = 你的应用ID`。该文件由 Git 忽略。
-3. 连接并解锁运行 iOS 27 或更新版本的 iPhone，选择该设备并运行。翻译服务的 API 密钥可在应用内「密钥」页面设置。测试音量无需 API 密钥。
-
-## 本地检查
-
-不签名编译 iPhone 目标：
-
-```sh
-xcodebuild -project CallCaptions.xcodeproj -scheme CallCaptions \
-  -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
-```
-
-在 macOS 运行会话回归测试：
-
-```sh
-swiftc -parse-as-library Sources/{Captions,PCM,Soniox,Gemini,Vault,Capture,Overlay,Session}.swift \
-  Tests/SessionTests.swift -o /tmp/callcaptions-session-tests
-/tmp/callcaptions-session-tests
-```
+iPhone 首页、画中画字幕、应用配置和开发入口位于 [ios/](ios/)。用 Xcode 打开 `ios/CallCaptions.xcworkspace`，选择 `CallCaptions` 和目标 iPhone 即可运行。真机签名和命令行构建见 [iOS 开发说明](ios/README.md)。
 
 ## Mac 版本（`macos/`）
 
@@ -43,6 +24,16 @@ cd android
 ```
 
 编译产物位于 `android/app/build/outputs/apk/debug/app-debug.apk`（由 Git 忽略）。真机使用与机内声音限制见[使用说明](使用说明.md)。
+
+## Apple 共享代码与本地检查
+
+iOS 和 macOS 共用根目录的 Xcode 工程、`Sources/`、`Assets.xcassets/` 和回归测试。可以从仓库根目录在 Mac 上运行会话测试。
+
+```sh
+swiftc -parse-as-library Sources/{Captions,PCM,Soniox,Gemini,Vault,Capture,Session}.swift \
+  ios/Sources/Overlay.swift Tests/SessionTests.swift -o /tmp/callcaptions-session-tests
+/tmp/callcaptions-session-tests
+```
 
 ## 多台电脑协作
 

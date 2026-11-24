@@ -1,0 +1,4 @@
+PRODUCT_BUNDLE_IDENTIFIER = app.local.callcaptions.jazh27
+// Existing checkouts may still keep their local settings at the repository root.
+#include? "../Signing.local.xcconfig"
+#include? "Signing.local.xcconfig"
