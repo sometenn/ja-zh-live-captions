@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.sometenn.callcaptions.capture.MediaProjectionConsentCoordinator
 import com.sometenn.callcaptions.core.AudioSource
 import com.sometenn.callcaptions.core.CaptionDisplayMode
+import com.sometenn.callcaptions.core.OverlayAppearance
 import com.sometenn.callcaptions.core.OverlaySink
 import com.sometenn.callcaptions.core.Provider
 import com.sometenn.callcaptions.core.Session
@@ -22,6 +23,8 @@ class HomeViewModel(
     private val overlaySink: OverlaySink,
     val overlayState: StateFlow<OverlayUiState>,
     private val consentCoordinator: MediaProjectionConsentCoordinator = MediaProjectionConsentCoordinator(),
+    private val updateAppearanceAction: (OverlayAppearance) -> Unit = {},
+    private val resetAppearanceAction: () -> Unit = {},
     private val clearOverlayNoticeAction: () -> Unit = {},
 ) : ViewModel() {
 
@@ -76,6 +79,14 @@ class HomeViewModel(
         clearOverlayNoticeAction()
     }
 
+    fun updateAppearance(next: OverlayAppearance) {
+        updateAppearanceAction(next)
+    }
+
+    fun resetAppearance() {
+        resetAppearanceAction()
+    }
+
     fun refreshPreviewIfIdle() {
         session.refreshPreviewIfIdle()
     }
@@ -93,6 +104,8 @@ class HomeViewModel(
                     overlaySink = overlay,
                     overlayState = overlay.uiState,
                     consentCoordinator = consentCoordinator,
+                    updateAppearanceAction = { overlay.updateAppearance(it) },
+                    resetAppearanceAction = { overlay.resetAppearance() },
                     clearOverlayNoticeAction = { overlay.clearNotice() },
                 ) as T
             }
@@ -108,6 +121,12 @@ class HomeViewModel(
             overlaySink = overlaySink,
             overlayState = overlayState.asStateFlow(),
             consentCoordinator = consentCoordinator,
+            updateAppearanceAction = { next ->
+                overlayState.value = overlayState.value.copy(appearance = next.sanitized())
+            },
+            resetAppearanceAction = {
+                overlayState.value = overlayState.value.copy(appearance = OverlayAppearance.DEFAULT)
+            },
         )
     }
 }
