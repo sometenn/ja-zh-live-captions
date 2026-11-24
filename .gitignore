@@ -21,3 +21,17 @@ work/
 .env
 .env.*
 *.local.xcconfig
+
+# Android
+android/.gradle/
+android/.idea/
+android/build/
+android/*/build/
+android/local.properties
+android/captures/
+*.apk
+*.aab
+*.ap_
+*.jks
+*.keystore
+*.hprof
