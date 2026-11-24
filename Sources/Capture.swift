@@ -6,7 +6,7 @@ enum AudioSource: String, CaseIterable {
     var title: String { self == .system ? "机内声音" : "麦克风" }
 
     @MainActor func makeCapture() -> any AudioCapture {
-        #if os(iOS)
+        #if os(iOS) || MAC_CAPTIONS
         if self == .microphone { return MicrophoneCapture() }
         #endif
         return Capture()
@@ -21,7 +21,7 @@ protocol AudioCapture: AnyObject {
     func stop() async
 }
 
-#if targetEnvironment(simulator) || !os(iOS)
+#if targetEnvironment(simulator) || (!os(iOS) && !MAC_CAPTIONS)
 @MainActor
 final class Capture: AudioCapture {
     let audio: AsyncThrowingStream<AudioChunk, Error>
@@ -82,6 +82,9 @@ final class Capture: NSObject, AudioCapture, SCContentSharingPickerObserver {
         #if os(iOS) && !targetEnvironment(macCatalyst)
         config.showsMicrophoneControl = false
         #endif
+        #if MAC_CAPTIONS
+        config.allowedPickerModes = [.singleApplication, .singleDisplay]
+        #endif
         picker.defaultConfiguration = config
         picker.add(self)
         picker.isActive = true
@@ -141,7 +144,7 @@ final class Capture: NSObject, AudioCapture, SCContentSharingPickerObserver {
 }
 #endif
 
-#if os(iOS)
+#if os(iOS) || MAC_CAPTIONS
 import AVFAudio
 
 // The audio tap runs outside the UI actor. Serialize access to its resampler.
@@ -168,10 +171,12 @@ private final class MicrophoneCapture: AudioCapture {
     let audio: AsyncThrowingStream<AudioChunk, Error>
     private let output: MicrophoneOutput
     private let engine = AVAudioEngine()
+    #if os(iOS)
     private let session = AVAudioSession.sharedInstance()
+    private var activated = false
+    #endif
     private var observers: [NSObjectProtocol] = []
     private var startup: Task<Void, Never>?
-    private var activated = false
     private var tapped = false
     var started: (() -> Void)?
 
@@ -187,12 +192,14 @@ private final class MicrophoneCapture: AudioCapture {
             guard !Task.isCancelled else { return }
             do {
                 guard allowed else {
-                    throw CaptionError("请在 iPhone「设置」中允许「日语实时字幕」使用麦克风。")
+                    throw CaptionError("请在系统设置中允许「日语实时字幕」使用麦克风。")
                 }
+                #if os(iOS)
                 try session.setCategory(.playAndRecord, mode: .default,
                                         options: [.mixWithOthers, .defaultToSpeaker, .allowBluetoothHFP])
                 try session.setActive(true)
                 activated = true
+                #endif
                 let node = engine.inputNode
                 let format = node.outputFormat(forBus: 0)
                 guard format.channelCount > 0, format.sampleRate > 0 else {
@@ -204,21 +211,27 @@ private final class MicrophoneCapture: AudioCapture {
                 tapped = true
                 try engine.start()
                 let center = NotificationCenter.default
+                #if os(iOS)
                 observers.append(center.addObserver(forName: AVAudioSession.interruptionNotification,
                                                     object: session, queue: nil) { [output] note in
                     if note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt == AVAudioSession.InterruptionType.began.rawValue {
                         output.continuation.finish(throwing: CaptionError("麦克风收音被打断，请在麦克风可用后重新开始。"))
                     }
                 })
+                #endif
                 observers.append(center.addObserver(forName: .AVAudioEngineConfigurationChange,
                                                     object: engine, queue: nil) { [output] _ in
                     output.continuation.finish(throwing: CaptionError("音频设备已变更，请重新开始麦克风收音。"))
                 })
                 started?()
             } catch {
+                #if os(iOS)
                 let message = (error as NSError).code == AVAudioSession.ErrorCode.insufficientPriority.rawValue
                     ? "麦克风正被通话占用。可选择机内声音，或在通话结束后重试。"
                     : error.localizedDescription
+                #else
+                let message = error.localizedDescription
+                #endif
                 output.continuation.finish(throwing: CaptionError(message))
             }
         }
@@ -235,10 +248,12 @@ private final class MicrophoneCapture: AudioCapture {
             tapped = false
         }
         output.continuation.finish()
+        #if os(iOS)
         if activated {
             try? session.setActive(false, options: .notifyOthersOnDeactivation)
             activated = false
         }
+        #endif
     }
 }
 #endif

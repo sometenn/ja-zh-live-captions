@@ -439,7 +439,7 @@ final class Overlay: NSObject, ObservableObject, AVPictureInPictureSampleBufferP
     nonisolated func pictureInPictureController(_ controller: AVPictureInPictureController, skipByInterval skipInterval: CMTime,
                                                 completion: @escaping () -> Void) { completion() }
 }
-#else
+#elseif !MAC_CAPTIONS
 import Combine
 import Foundation
 

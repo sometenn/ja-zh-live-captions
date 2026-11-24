@@ -15,7 +15,7 @@ enum Vault {
         let status = SecItemCopyMatching(request as CFDictionary, &result)
         if status == errSecItemNotFound { return "" }
         guard status == errSecSuccess, let data = result as? Data else {
-            throw CaptionError("无法读取钥匙串（\(status)）。请解锁 iPhone 后重试。")
+            throw CaptionError("无法读取钥匙串（\(status)）。请解锁设备后重试。")
         }
         return String(decoding: data, as: UTF8.self)
     }
