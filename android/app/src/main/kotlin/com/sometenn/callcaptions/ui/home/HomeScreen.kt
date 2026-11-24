@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -56,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sometenn.callcaptions.core.AudioSource
 import com.sometenn.callcaptions.core.CaptionDisplayMode
 import com.sometenn.callcaptions.core.CaptionTextLayout
+import com.sometenn.callcaptions.core.OverlayAppearance
 import com.sometenn.callcaptions.core.OverlayBanner
 import com.sometenn.callcaptions.core.OverlayFrame
 import com.sometenn.callcaptions.core.Provider
@@ -73,6 +74,7 @@ fun HomeRoute(
     val context = LocalContext.current
 
     var showKeySheet by remember { mutableStateOf(false) }
+    var showAppearanceSheet by remember { mutableStateOf(false) }
     var pendingCaptureMode by remember { mutableStateOf<Session.Mode?>(null) }
 
     val audioPermissionLauncher = rememberLauncherForActivityResult(
@@ -162,6 +164,7 @@ fun HomeRoute(
         sessionState = sessionState,
         overlayState = overlayState,
         onOpenKeys = { showKeySheet = true },
+        onOpenAppearance = { showAppearanceSheet = true },
         onSelectProvider = viewModel::selectProvider,
         onSelectSource = viewModel::selectSource,
         onSelectDisplayMode = viewModel::selectDisplayMode,
@@ -191,6 +194,18 @@ fun HomeRoute(
             onDismiss = { showKeySheet = false },
         )
     }
+
+    if (showAppearanceSheet) {
+        AppearanceSheet(
+            appearance = overlayState.appearance,
+            previewFrame = sessionState.frame,
+            displayMode = sessionState.displayMode,
+            overlayActive = overlayState.active,
+            onUpdate = viewModel::updateAppearance,
+            onReset = viewModel::resetAppearance,
+            onDismiss = { showAppearanceSheet = false },
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -199,6 +214,7 @@ fun HomeScreen(
     sessionState: SessionState,
     overlayState: OverlayUiState,
     onOpenKeys: () -> Unit,
+    onOpenAppearance: () -> Unit,
     onSelectProvider: (Provider) -> Unit,
     onSelectSource: (AudioSource) -> Unit,
     onSelectDisplayMode: (CaptionDisplayMode) -> Unit,
@@ -215,6 +231,9 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("日语实时字幕") },
                 actions = {
+                    TextButton(onClick = onOpenAppearance) {
+                        Text("外观")
+                    }
                     TextButton(
                         onClick = onOpenKeys,
                         enabled = sessionState.stage == Session.Stage.IDLE,
@@ -308,7 +327,24 @@ fun HomeScreen(
             OverlayPreviewCard(
                 frame = sessionState.frame,
                 displayMode = sessionState.displayMode,
+                appearance = overlayState.appearance,
             )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val ap = overlayState.appearance
+                Text(
+                    text = "字号 ${ap.fontScalePercent}% · 宽度 ${ap.widthPercent}% · ${ap.maxLines}行 · 透明度 ${ap.backgroundAlphaPercent}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                TextButton(onClick = onOpenAppearance) {
+                    Text("调整外观")
+                }
+            }
 
             // Floating overlay controls when listening
             if (isListening) {
@@ -401,20 +437,21 @@ fun HomeScreen(
 fun OverlayPreviewCard(
     frame: OverlayFrame,
     displayMode: CaptionDisplayMode,
+    appearance: OverlayAppearance = OverlayAppearance.DEFAULT,
     modifier: Modifier = Modifier,
 ) {
-    val bgColor = Color(0xFF0B131C)
+    val bgColor = Color(0xFF0B131C).copy(alpha = appearance.backgroundAlphaFloat)
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(768f / 224f)
+            .defaultMinSize(minHeight = 96.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(bgColor)
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp)
             .semantics { contentDescription = displayMode.accessibilityLabel },
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.Center,
         ) {
             frame.banner?.let { banner ->
@@ -434,33 +471,39 @@ fun OverlayPreviewCard(
 
             when (val style = frame.style) {
                 is OverlayFrame.Style.Bilingual -> {
+                    val topBudget = appearance.charBudget(isChineseOnly = false, isTopJapanese = true)
+                    val bottomBudget = appearance.charBudget(isChineseOnly = false, isTopJapanese = false)
                     if (style.top.isNotEmpty()) {
                         Text(
-                            text = CaptionTextLayout.fitRecentPhrase(style.top) { it.length <= 42 },
+                            text = CaptionTextLayout.fitRecentPhrase(style.top) { it.length <= topBudget },
                             color = Color(0xFFD2E0F0),
-                            fontSize = 13.sp,
-                            maxLines = 2,
+                            fontSize = appearance.topTextSizeSp.sp,
+                            lineHeight = (appearance.topTextSizeSp * 1.3f).sp,
+                            maxLines = appearance.maxLines,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
                     Text(
-                        text = CaptionTextLayout.fitRecentPhrase(style.bottom) { it.length <= 36 },
+                        text = CaptionTextLayout.fitRecentPhrase(style.bottom) { it.length <= bottomBudget },
                         color = Color.White,
-                        fontSize = 17.sp,
+                        fontSize = appearance.bottomTextSizeSp.sp,
+                        lineHeight = (appearance.bottomTextSizeSp * 1.3f).sp,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 2,
+                        maxLines = appearance.maxLines,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 2.dp),
                     )
                 }
 
                 is OverlayFrame.Style.ChineseOnly -> {
+                    val budget = appearance.charBudget(isChineseOnly = true)
                     Text(
-                        text = CaptionTextLayout.fitRecentPhrase(style.text) { it.length <= 42 },
+                        text = CaptionTextLayout.fitRecentPhrase(style.text) { it.length <= budget },
                         color = if (style.isPlaceholder) Color(0xAAD2E0F0) else Color.White,
-                        fontSize = 21.sp,
+                        fontSize = appearance.chineseOnlyTextSizeSp.sp,
+                        lineHeight = (appearance.chineseOnlyTextSizeSp * 1.3f).sp,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 3,
+                        maxLines = appearance.chineseOnlyMaxLines,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }

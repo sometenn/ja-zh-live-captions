@@ -19,7 +19,7 @@ class AppContainer(context: Context) {
         appContext.getSharedPreferences("callcaptions_prefs", Context.MODE_PRIVATE),
     )
     private val vault = AndroidKeystoreVault(appContext)
-    val overlay = AndroidOverlayController(appContext)
+    val overlay = AndroidOverlayController(appContext, prefs)
     val consentCoordinator = MediaProjectionConsentCoordinator()
 
     val session = Session(

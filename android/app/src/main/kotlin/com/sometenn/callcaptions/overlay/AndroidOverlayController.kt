@@ -16,9 +16,12 @@ import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.sometenn.callcaptions.core.CaptionTextLayout
+import com.sometenn.callcaptions.core.InMemoryPreferencesStore
+import com.sometenn.callcaptions.core.OverlayAppearance
 import com.sometenn.callcaptions.core.OverlayBanner
 import com.sometenn.callcaptions.core.OverlayFrame
 import com.sometenn.callcaptions.core.OverlaySink
+import com.sometenn.callcaptions.core.PreferencesStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,27 +31,34 @@ data class OverlayUiState(
     val active: Boolean = false,
     val notice: String = "",
     val lastFrame: OverlayFrame? = null,
+    val appearance: OverlayAppearance = OverlayAppearance.DEFAULT,
 )
 
 /**
  * Draggable system-level floating caption window backed by [WindowManager]
- * (`SYSTEM_ALERT_WINDOW`). Closing the overlay hides the floating window without
- * stopping an active capture/translation session.
+ * (`SYSTEM_ALERT_WINDOW`). Supports live font size, window width, line count,
+ * and background opacity customization. Closing the overlay hides the floating
+ * window without stopping an active capture/translation session.
  */
 class AndroidOverlayController(
     private val context: Context,
+    private val prefs: PreferencesStore = InMemoryPreferencesStore(),
 ) : OverlaySink {
 
     private val appContext = context.applicationContext
     private val windowManager = appContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-    private val _uiState = MutableStateFlow(OverlayUiState())
+    private val _uiState = MutableStateFlow(
+        OverlayUiState(appearance = OverlayAppearance.load(prefs)),
+    )
     val uiState: StateFlow<OverlayUiState> = _uiState.asStateFlow()
 
     override val active: Boolean get() = _uiState.value.active
     override val lastFrame: OverlayFrame? get() = _uiState.value.lastFrame
+    val appearance: OverlayAppearance get() = _uiState.value.appearance
 
-    private var rootView: View? = null
+    private var rootView: LinearLayout? = null
+    private var backgroundDrawable: GradientDrawable? = null
     private var layoutParams: WindowManager.LayoutParams? = null
     private var bannerView: TextView? = null
     private var topView: TextView? = null
@@ -57,7 +67,22 @@ class AndroidOverlayController(
     private var probeStatusView: TextView? = null
     private var probeMeterView: TextView? = null
 
+    private var savedX: Int = 0
+    private var savedY: Int? = null
+
     fun canDrawOverlays(): Boolean = Settings.canDrawOverlays(appContext)
+
+    fun updateAppearance(next: OverlayAppearance) {
+        val clean = next.sanitized()
+        if (clean == _uiState.value.appearance) return
+        clean.save(prefs)
+        _uiState.value = _uiState.value.copy(appearance = clean)
+        applyAppearanceToLiveOverlay(clean)
+    }
+
+    fun resetAppearance() {
+        updateAppearance(OverlayAppearance.DEFAULT)
+    }
 
     override fun prepare() {
         clearNotice()
@@ -74,21 +99,20 @@ class AndroidOverlayController(
         }
 
         try {
-            val metrics = appContext.resources.displayMetrics
-            val widthPx = (metrics.widthPixels * 0.92f).roundToInt().coerceAtMost(dp(440))
+            val currentAppearance = _uiState.value.appearance
             val params = WindowManager.LayoutParams(
-                widthPx,
+                computeWidthPx(currentAppearance),
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT,
             ).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                x = 0
-                y = dp(96)
+                x = savedX
+                y = savedY ?: dp(96)
             }
 
-            val view = buildOverlayView(params)
+            val view = buildOverlayView(params, currentAppearance)
             windowManager.addView(view, params)
             rootView = view
             layoutParams = params
@@ -121,9 +145,44 @@ class AndroidOverlayController(
         }
     }
 
+    private fun computeWidthPx(appearance: OverlayAppearance): Int {
+        val screenWidth = appContext.resources.displayMetrics.widthPixels
+        return (screenWidth * (appearance.widthPercent / 100f)).roundToInt().coerceAtLeast(dp(200))
+    }
+
+    private fun applyAppearanceToLiveOverlay(appearance: OverlayAppearance) {
+        val view = rootView ?: return
+        val params = layoutParams ?: return
+
+        backgroundDrawable?.setColor(Color.argb(appearance.backgroundAlphaByte, 11, 19, 28))
+
+        topView?.apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.topTextSizeSp)
+            maxLines = appearance.maxLines
+        }
+        bottomView?.apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.bottomTextSizeSp)
+            maxLines = appearance.maxLines
+        }
+        largeChineseView?.apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.chineseOnlyTextSizeSp)
+            maxLines = appearance.chineseOnlyMaxLines
+        }
+
+        params.width = computeWidthPx(appearance)
+        try {
+            windowManager.updateViewLayout(view, params)
+        } catch (_: Throwable) {
+            // Ignore if view was detached concurrently.
+        }
+
+        _uiState.value.lastFrame?.let { renderFrame(it) }
+    }
+
     private fun removeViewSafely() {
         val view = rootView
         rootView = null
+        backgroundDrawable = null
         layoutParams = null
         bannerView = null
         topView = null
@@ -141,19 +200,24 @@ class AndroidOverlayController(
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun buildOverlayView(params: WindowManager.LayoutParams): View {
+    private fun buildOverlayView(
+        params: WindowManager.LayoutParams,
+        appearance: OverlayAppearance,
+    ): LinearLayout {
+        val bg = GradientDrawable().apply {
+            setColor(Color.argb(appearance.backgroundAlphaByte, 11, 19, 28))
+            cornerRadius = dp(14).toFloat()
+            setStroke(dp(1), Color.argb(72, 255, 255, 255))
+        }
+        backgroundDrawable = bg
+
         val container = LinearLayout(appContext).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(10), dp(14), dp(12))
-            background = GradientDrawable().apply {
-                setColor(Color.argb(232, 11, 19, 28))
-                cornerRadius = dp(14).toFloat()
-                setStroke(dp(1), Color.argb(72, 255, 255, 255))
-            }
+            background = bg
             elevation = dp(6).toFloat()
         }
 
-        // Top bar: banner + close button
         val headerRow = LinearLayout(appContext).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -191,26 +255,26 @@ class AndroidOverlayController(
 
         val topText = TextView(appContext).apply {
             setTextColor(Color.argb(210, 216, 228, 242))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            maxLines = 2
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.topTextSizeSp)
+            maxLines = appearance.maxLines
             ellipsize = TextUtils.TruncateAt.START
             setPadding(0, dp(4), 0, dp(2))
         }
 
         val bottomText = TextView(appContext).apply {
             setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.bottomTextSizeSp)
             typeface = Typeface.DEFAULT_BOLD
-            maxLines = 2
+            maxLines = appearance.maxLines
             ellipsize = TextUtils.TruncateAt.START
             setPadding(0, dp(2), 0, 0)
         }
 
         val largeChinese = TextView(appContext).apply {
             setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.chineseOnlyTextSizeSp)
             typeface = Typeface.DEFAULT_BOLD
-            maxLines = 3
+            maxLines = appearance.chineseOnlyMaxLines
             ellipsize = TextUtils.TruncateAt.START
             setPadding(0, dp(6), 0, dp(2))
             visibility = View.GONE
@@ -244,10 +308,8 @@ class AndroidOverlayController(
         probeStatusView = probeStatus
         probeMeterView = probeMeter
 
-        // Keep dragHint synced when banner is shown/hidden
         banner.tag = dragHint
 
-        // Drag support
         var initialX = 0
         var initialY = 0
         var initialTouchX = 0f
@@ -264,6 +326,8 @@ class AndroidOverlayController(
                 MotionEvent.ACTION_MOVE -> {
                     params.x = initialX + (event.rawX - initialTouchX).roundToInt()
                     params.y = (initialY + (event.rawY - initialTouchY).roundToInt()).coerceAtLeast(0)
+                    savedX = params.x
+                    savedY = params.y
                     if (rootView != null) {
                         try {
                             windowManager.updateViewLayout(container, params)
@@ -288,6 +352,7 @@ class AndroidOverlayController(
         val large = largeChineseView ?: return
         val pStatus = probeStatusView ?: return
         val pMeter = probeMeterView ?: return
+        val currentAppearance = _uiState.value.appearance
 
         if (frame.banner != null) {
             banner.text = frame.banner.text
@@ -306,8 +371,10 @@ class AndroidOverlayController(
 
         when (val style = frame.style) {
             is OverlayFrame.Style.Bilingual -> {
-                top.text = CaptionTextLayout.fitRecentPhrase(style.top) { it.length <= 42 }
-                bottom.text = CaptionTextLayout.fitRecentPhrase(style.bottom) { it.length <= 36 }
+                val topBudget = currentAppearance.charBudget(isChineseOnly = false, isTopJapanese = true)
+                val bottomBudget = currentAppearance.charBudget(isChineseOnly = false, isTopJapanese = false)
+                top.text = CaptionTextLayout.fitRecentPhrase(style.top) { it.length <= topBudget }
+                bottom.text = CaptionTextLayout.fitRecentPhrase(style.bottom) { it.length <= bottomBudget }
                 top.visibility = if (style.top.isEmpty()) View.GONE else View.VISIBLE
                 bottom.visibility = View.VISIBLE
                 large.visibility = View.GONE
@@ -315,7 +382,8 @@ class AndroidOverlayController(
                 pMeter.visibility = View.GONE
             }
             is OverlayFrame.Style.ChineseOnly -> {
-                large.text = CaptionTextLayout.fitRecentPhrase(style.text) { it.length <= 42 }
+                val budget = currentAppearance.charBudget(isChineseOnly = true)
+                large.text = CaptionTextLayout.fitRecentPhrase(style.text) { it.length <= budget }
                 large.setTextColor(
                     if (style.isPlaceholder) Color.argb(170, 210, 224, 240) else Color.WHITE,
                 )
