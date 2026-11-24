@@ -1,0 +1,293 @@
+using System.ComponentModel;
+using System.Windows;
+using System.Windows.Markup;
+using System.Windows.Media;
+using CallCaptions.App.Audio;
+using CallCaptions.App.Overlay;
+using CallCaptions.Core;
+
+namespace CallCaptions.App.UI;
+
+public partial class MainWindow : Window
+{
+    private sealed record FontOption(string Value, string Label);
+
+    private readonly JsonSettingsStore _settingsStore;
+    private readonly WindowsOverlayController _overlay;
+    private readonly Session _session;
+    private bool _updatingUi;
+
+    public MainWindow()
+    {
+        InitializeComponent();
+
+        _settingsStore = new JsonSettingsStore();
+        var initialSettings = _settingsStore.Load();
+        _overlay = new WindowsOverlayController(initialSettings, () => _settingsStore.Save(initialSettings));
+
+        _session = new Session(
+            settingsStore: new PreloadedSettingsStore(_settingsStore, initialSettings),
+            overlay: _overlay,
+            makeCapture: source => new WindowsAudioCapture(source));
+
+        PopulateFonts();
+        SyncControlsFromState();
+
+        _session.PropertyChanged += Session_PropertyChanged;
+        _overlay.PropertyChanged += Overlay_PropertyChanged;
+        Closing += MainWindow_Closing;
+    }
+
+    private void PopulateFonts()
+    {
+        var currentLang = XmlLanguage.GetLanguage(System.Globalization.CultureInfo.CurrentUICulture.IetfLanguageTag);
+        var options = new List<FontOption> { new(string.Empty, "系统字体") };
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (FontFamily ff in Fonts.SystemFontFamilies)
+        {
+            string source = ff.Source;
+            if (string.IsNullOrWhiteSpace(source) || !seen.Add(source)) continue;
+
+            string label = ff.FamilyNames.TryGetValue(currentLang, out string? localized)
+                ? localized
+                : ff.FamilyNames.Values.FirstOrDefault() ?? source;
+            options.Add(new FontOption(source, label));
+        }
+
+        FontFamilyCombo.ItemsSource = options
+            .Take(1)
+            .Concat(options.Skip(1).OrderBy(o => o.Label, StringComparer.CurrentCultureIgnoreCase))
+            .ToList();
+    }
+
+    private void SyncControlsFromState()
+    {
+        _updatingUi = true;
+        try
+        {
+            var appearance = _session.Settings.Appearance;
+
+            SonioxRadio.IsChecked = _session.Provider == Provider.Soniox;
+            GeminiRadio.IsChecked = _session.Provider == Provider.Gemini;
+
+            SystemAudioRadio.IsChecked = _session.Source == AudioSource.System;
+            MicAudioRadio.IsChecked = _session.Source == AudioSource.Microphone;
+
+            BilingualRadio.IsChecked = _session.DisplayMode == CaptionDisplayMode.Bilingual;
+            ChineseOnlyRadio.IsChecked = _session.DisplayMode == CaptionDisplayMode.ChineseOnly;
+
+            FontFamilyCombo.SelectedValue = appearance.FontFamily ?? string.Empty;
+            if (FontFamilyCombo.SelectedIndex < 0) FontFamilyCombo.SelectedIndex = 0;
+
+            SourceSizeSlider.Value = appearance.SourceSize;
+            TranslationSizeSlider.Value = appearance.TranslationSize;
+            OpacitySlider.Value = appearance.Opacity;
+
+            InkWhiteRadio.IsChecked = appearance.Ink == CaptionInk.White;
+            InkMintRadio.IsChecked = appearance.Ink == CaptionInk.Mint;
+            InkAmberRadio.IsChecked = appearance.Ink == CaptionInk.Amber;
+
+            UpdateAppearanceLabels();
+            UpdateDynamicState();
+        }
+        finally
+        {
+            _updatingUi = false;
+        }
+    }
+
+    private void UpdateAppearanceLabels()
+    {
+        var appearance = _session.Settings.Appearance;
+        SourceSizeLabel.Text = $"{(int)Math.Round(appearance.SourceSize)} pt";
+        TranslationSizeLabel.Text = $"{(int)Math.Round(appearance.TranslationSize)} pt";
+        OpacityLabel.Text = $"{(int)Math.Round(appearance.Opacity)} %";
+    }
+
+    private void UpdateDynamicState()
+    {
+        bool isIdle = _session.Stage == SessionStage.Idle;
+        bool isStopping = _session.Stage == SessionStage.Stopping;
+        bool isPicking = _session.Stage == SessionStage.Picking;
+
+        KeyButton.IsEnabled = isIdle;
+        ToggleOverlayButton.IsEnabled = !isStopping;
+        ToggleOverlayButton.Content = _overlay.Active ? "收起置顶字幕" : "开启置顶字幕";
+
+        PreviewTitleText.Text = isIdle ? "字幕预览" : "实时字幕";
+
+        SonioxRadio.IsEnabled = !isPicking && !isStopping;
+        GeminiRadio.IsEnabled = !isPicking && !isStopping;
+        SystemAudioRadio.IsEnabled = isIdle;
+        MicAudioRadio.IsEnabled = isIdle;
+        BilingualRadio.IsEnabled = !isStopping;
+        ChineseOnlyRadio.IsEnabled = !isStopping;
+
+        SessionPrivacyText.Text = $"测试收音仅在本机进行。翻译时，所选声音会发送给 {_session.Provider.DisplayName()}。";
+        StatusText.Text = string.IsNullOrEmpty(_session.SwitchNotice) ? _session.Status : _session.SwitchNotice;
+        StatusText.ToolTip = StatusText.Text;
+
+        ProbeButton.Visibility = isIdle ? Visibility.Visible : Visibility.Collapsed;
+        StartButton.Visibility = isIdle ? Visibility.Visible : Visibility.Collapsed;
+        StopButton.Visibility = isIdle ? Visibility.Collapsed : Visibility.Visible;
+        StopButton.IsEnabled = !isStopping;
+
+        OverlayFrame preview = isIdle
+            ? CaptionSample.Sample(_session.DisplayMode)
+            : _session.Frame;
+        PreviewControl.Update(preview, _session.Settings.Appearance);
+    }
+
+    private void Session_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        _updatingUi = true;
+        try
+        {
+            SonioxRadio.IsChecked = _session.Provider == Provider.Soniox;
+            GeminiRadio.IsChecked = _session.Provider == Provider.Gemini;
+            SystemAudioRadio.IsChecked = _session.Source == AudioSource.System;
+            MicAudioRadio.IsChecked = _session.Source == AudioSource.Microphone;
+            BilingualRadio.IsChecked = _session.DisplayMode == CaptionDisplayMode.Bilingual;
+            ChineseOnlyRadio.IsChecked = _session.DisplayMode == CaptionDisplayMode.ChineseOnly;
+            UpdateDynamicState();
+        }
+        finally
+        {
+            _updatingUi = false;
+        }
+    }
+
+    private void Overlay_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(WindowsOverlayController.Active))
+        {
+            ToggleOverlayButton.Content = _overlay.Active ? "收起置顶字幕" : "开启置顶字幕";
+        }
+    }
+
+    private void SettingsTab_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        bool editingAppearance = AppearanceTabRadio.IsChecked == true;
+        SessionPanel.Visibility = editingAppearance ? Visibility.Collapsed : Visibility.Visible;
+        AppearancePanel.Visibility = editingAppearance ? Visibility.Visible : Visibility.Collapsed;
+        RestoreDefaultsButton.Visibility = editingAppearance ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void ProviderRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        Provider next = GeminiRadio.IsChecked == true ? Provider.Gemini : Provider.Soniox;
+        _session.SelectProvider(next);
+    }
+
+    private void SourceRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        AudioSource next = MicAudioRadio.IsChecked == true ? AudioSource.Microphone : AudioSource.System;
+        _session.SelectSource(next);
+    }
+
+    private void DisplayModeRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        CaptionDisplayMode next = ChineseOnlyRadio.IsChecked == true
+            ? CaptionDisplayMode.ChineseOnly
+            : CaptionDisplayMode.Bilingual;
+        _session.SelectDisplayMode(next);
+    }
+
+    private void FontFamilyCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        _session.Settings.Appearance.FontFamily = FontFamilyCombo.SelectedValue as string ?? string.Empty;
+        ApplyAppearanceChange();
+    }
+
+    private void AppearanceSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        _session.Settings.Appearance.SourceSize = Math.Round(SourceSizeSlider.Value);
+        _session.Settings.Appearance.TranslationSize = Math.Round(TranslationSizeSlider.Value);
+        _session.Settings.Appearance.Opacity = Math.Round(OpacitySlider.Value);
+        ApplyAppearanceChange();
+    }
+
+    private void InkRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_updatingUi || !IsLoaded) return;
+        _session.Settings.Appearance.Ink = InkMintRadio.IsChecked == true
+            ? CaptionInk.Mint
+            : (InkAmberRadio.IsChecked == true ? CaptionInk.Amber : CaptionInk.White);
+        ApplyAppearanceChange();
+    }
+
+    private void RestoreDefaultsButton_Click(object sender, RoutedEventArgs e)
+    {
+        _session.Settings.Appearance.RestoreDefaults();
+        _session.SaveSettings();
+        SyncControlsFromState();
+        _overlay.RefreshAppearance();
+    }
+
+    private void ApplyAppearanceChange()
+    {
+        UpdateAppearanceLabels();
+        _session.SaveSettings();
+        UpdateDynamicState();
+        _overlay.RefreshAppearance();
+    }
+
+    private void KeyButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new KeyDialog(_session) { Owner = this };
+        dialog.ShowDialog();
+    }
+
+    private void ToggleOverlayButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_overlay.Active) _overlay.Stop();
+        else _overlay.Start();
+    }
+
+    private void ProbeButton_Click(object sender, RoutedEventArgs e)
+    {
+        _session.Begin(SessionMode.Probe);
+    }
+
+    private void StartButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_session.HasKey)
+        {
+            _session.Begin(SessionMode.Translate);
+        }
+        else
+        {
+            var dialog = new KeyDialog(_session) { Owner = this };
+            if (dialog.ShowDialog() == true && _session.HasKey)
+            {
+                _session.Begin(SessionMode.Translate);
+            }
+        }
+    }
+
+    private void StopButton_Click(object sender, RoutedEventArgs e)
+    {
+        _session.Finish();
+    }
+
+    private void MainWindow_Closing(object? sender, CancelEventArgs e)
+    {
+        _session.PropertyChanged -= Session_PropertyChanged;
+        _overlay.PropertyChanged -= Overlay_PropertyChanged;
+        _session.Finish();
+        _overlay.DisposeWindow();
+    }
+
+    private sealed class PreloadedSettingsStore(ISettingsStore inner, AppSettingsData preloaded) : ISettingsStore
+    {
+        public AppSettingsData Load() => preloaded;
+        public void Save(AppSettingsData data) => inner.Save(data);
+    }
+}
