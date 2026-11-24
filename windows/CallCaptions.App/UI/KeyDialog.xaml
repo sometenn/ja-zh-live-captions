@@ -1,0 +1,94 @@
+<Window x:Class="CallCaptions.App.UI.KeyDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="密钥设置"
+        Width="440"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{StaticResource WindowBgBrush}">
+    <StackPanel Margin="20">
+        <TextBlock x:Name="TitleText" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+        <Border Background="{StaticResource CardBgBrush}"
+                BorderBrush="{StaticResource BorderBrushSubtle}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="14">
+            <StackPanel>
+                <TextBlock x:Name="HintText" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                <PasswordBox x:Name="KeyBox"
+                             Padding="8,6"
+                             FontSize="13"
+                             PasswordChanged="KeyBox_PasswordChanged" />
+                <TextBlock Text="密钥使用 Windows DPAPI 加密保存在当前用户的本机凭据目录中。"
+                           FontSize="11.5"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextWrapping="Wrap"
+                           Margin="0,8,0,0" />
+            </StackPanel>
+        </Border>
+
+        <Border x:Name="GeminiInfoPanel"
+                Visibility="Collapsed"
+                Background="{StaticResource CardBgBrush}"
+                BorderBrush="{StaticResource BorderBrushSubtle}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="14"
+                Margin="0,12,0,0">
+            <StackPanel>
+                <DockPanel Margin="0,0,0,6">
+                    <TextBlock Text="实时翻译模型" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" />
+                    <TextBlock x:Name="GeminiModelText"
+                               DockPanel.Dock="Right"
+                               HorizontalAlignment="Right"
+                               FontFamily="Consolas"
+                               FontSize="12.5"
+                               FontWeight="SemiBold" />
+                </DockPanel>
+                <TextBlock Text="日语转写和中文翻译共用一条 Gemini 连接，译文以字幕显示。"
+                           FontSize="12"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <TextBlock x:Name="ErrorText"
+                   Visibility="Collapsed"
+                   Foreground="#C62828"
+                   FontSize="12"
+                   TextWrapping="Wrap"
+                   Margin="0,10,0,0" />
+
+        <DockPanel Margin="0,16,0,0">
+            <Button x:Name="RemoveButton"
+                    Content="移除本机密钥"
+                    DockPanel.Dock="Left"
+                    Padding="12,6"
+                    Foreground="#C62828"
+                    Background="Transparent"
+                    BorderBrush="#E0B4B4"
+                    BorderThickness="1"
+                    Visibility="Collapsed"
+                    Click="RemoveButton_Click" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="关闭"
+                        Padding="16,6"
+                        Margin="0,0,8,0"
+                        IsCancel="True"
+                        Click="CloseButton_Click" />
+                <Button x:Name="SaveButton"
+                        Content="保存密钥"
+                        Padding="16,6"
+                        IsDefault="True"
+                        IsEnabled="False"
+                        Background="{StaticResource AccentBrush}"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Click="SaveButton_Click" />
+            </StackPanel>
+        </DockPanel>
+    </StackPanel>
+</Window>

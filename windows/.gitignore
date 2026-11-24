@@ -1,0 +1,9 @@
+!CallCaptions.App/
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+publish/
+TestResults/

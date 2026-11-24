@@ -1,6 +1,6 @@
 # 日语实时字幕 · CallCaptions
 
-iPhone、Mac 和 Android 上的实时日语转写和简体中文翻译。支持自填 Soniox 或 Gemini 密钥，收录机内声音或麦克风。iPhone 使用画中画字幕，Mac 使用可拖动、调整大小的原生置顶窗口，Android 使用系统悬浮窗。
+iPhone、Mac、Windows 和 Android 上的实时日语转写和简体中文翻译。支持自填 Soniox 或 Gemini 密钥，收录机内声音或麦克风。iPhone 使用画中画字幕，Mac 和 Windows 使用可拖动、调整大小的原生置顶窗口，Android 使用系统悬浮窗。
 
 iOS 当前版本为 **0.3.7（构建 10）**，支持从控制中心启动字幕。普通运营商电话音频接入仍在调研。功能边界和真机操作见[使用说明](使用说明.md)。
 
@@ -24,6 +24,20 @@ cd android
 ```
 
 编译产物位于 `android/app/build/outputs/apk/debug/app-debug.apk`（由 Git 忽略）。真机使用与机内声音限制见[使用说明](使用说明.md)。
+
+## Windows 版本（`windows/`）
+
+Windows 桌面端位于 [windows/](windows/)，使用 C# / .NET 8 + WPF 实现，功能对齐 Mac 版（Soniox / Gemini、WASAPI 机内声音与麦克风、测试收音、可拖动和缩放置顶字幕窗、字幕外观自定义、DPAPI 本地加密密钥）。
+
+运行 Windows 单元测试并启动应用：
+
+```powershell
+cd windows
+dotnet test CallCaptions.sln
+dotnet run --project CallCaptions.App\CallCaptions.App.csproj
+```
+
+详细说明见 [Windows 开发说明](windows/README.md)。
 
 ## Apple 共享代码与本地检查
 
