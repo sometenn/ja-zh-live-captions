@@ -21,12 +21,14 @@ dotnet test CallCaptions.sln
 dotnet run --project CallCaptions.App\CallCaptions.App.csproj
 ```
 
-打包为 Release 版本：
+打包为独立单文件 `.exe`（内置 .NET 运行时，可直接拷贝到其他 Windows 10/11 电脑双击运行）：
 
 ```powershell
 cd windows
-dotnet build CallCaptions.sln -c Release
+dotnet publish CallCaptions.App\CallCaptions.App.csproj -p:PublishProfile=win-x64-singlefile
 ```
+
+生成产物位于 `windows/publish/win-x64/CallCaptions.exe`（由 Git 忽略）。
 
 ## 工程结构
 

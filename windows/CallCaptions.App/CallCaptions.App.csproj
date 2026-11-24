@@ -9,8 +9,16 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>CallCaptions</AssemblyName>
     <ApplicationTitle>日语实时字幕</ApplicationTitle>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <Version>0.3.6</Version>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\AppIcon.ico" />
+    <Resource Include="Assets\AppIcon.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CallCaptions.Core\CallCaptions.Core.csproj" />

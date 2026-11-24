@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="clr-namespace:CallCaptions.App.UI"
         Title="日语实时字幕"
+        Icon="pack://application:,,,/Assets/AppIcon.ico"
         Width="620"
         Height="690"
         MinWidth="545"
@@ -115,10 +116,11 @@
         <!-- Header -->
         <DockPanel Grid.Row="0" Margin="0,0,0,18">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <Border Width="42" Height="42" CornerRadius="12" Background="{StaticResource AccentBrush}" Margin="0,0,12,0">
-                    <TextBlock Text="字" FontSize="20" FontWeight="Bold" Foreground="White"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
+                <Image Source="pack://application:,,,/Assets/AppIcon.png"
+                       Width="42"
+                       Height="42"
+                       Margin="0,0,12,0"
+                       RenderOptions.BitmapScalingMode="HighQuality" />
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="日语实时字幕" FontSize="22" FontWeight="SemiBold" Foreground="#131D1D" />
                     <TextBlock Text="日语 → 简体中文" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" />
