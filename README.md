@@ -29,15 +29,16 @@ cd android
 
 Windows 桌面端位于 [windows/](windows/)，使用 C# / .NET 8 + WPF 实现，功能对齐 Mac 版（Soniox / Gemini、WASAPI 机内声音与麦克风、测试收音、可拖动和缩放置顶字幕窗、字幕外观自定义、DPAPI 本地加密密钥）。
 
-运行 Windows 单元测试并启动应用：
+运行 Windows 单元测试、启动应用或打包单文件 `.exe`：
 
 ```powershell
 cd windows
 dotnet test CallCaptions.sln
 dotnet run --project CallCaptions.App\CallCaptions.App.csproj
+dotnet publish CallCaptions.App\CallCaptions.App.csproj -p:PublishProfile=win-x64-singlefile
 ```
 
-详细说明见 [Windows 开发说明](windows/README.md)。
+单文件产物位于 `windows/publish/win-x64/CallCaptions.exe`（由 Git 忽略）。详细说明见 [Windows 开发说明](windows/README.md)。
 
 ## Apple 共享代码与本地检查
 

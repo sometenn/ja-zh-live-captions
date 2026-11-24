@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="clr-namespace:CallCaptions.App.UI"
         Title="置顶字幕"
+        Icon="pack://application:,,,/Assets/AppIcon.ico"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
