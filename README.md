@@ -27,6 +27,19 @@ swiftc -parse-as-library Sources/{Captions,PCM,Soniox,Gemini,Vault,Capture,Overl
 /tmp/callcaptions-session-tests
 ```
 
+## Android 版本（`android/`）
+
+Android 端位于 `android/` 目录，使用 Kotlin + Jetpack Compose 实现，最低支持 **Android 10（API 29）**，功能对齐 iOS 0.3.6（Soniox / Gemini、双语与仅大号中文、本地加密密钥、麦克风与机内声音采集、可拖动系统悬浮字幕窗）。
+
+运行 Android 单元测试并编译 Debug APK：
+
+```sh
+cd android
+./gradlew test assembleDebug
+```
+
+编译产物位于 `android/app/build/outputs/apk/debug/app-debug.apk`（由 Git 忽略）。真机使用与机内声音限制见[使用说明](使用说明.md)。
+
 ## 多台电脑协作
 
 每台电脑克隆同一个仓库。每个 AI 或开发任务从最新 `main` 开独立分支，推送后发 Pull Request。跨电脑继续同一项工作时，检出对应分支。签名和 API 密钥按设备配置。
