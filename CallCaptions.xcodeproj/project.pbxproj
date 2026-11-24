@@ -21,6 +21,10 @@
 		CF0000000000000000000010 /* KeySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0000000000000000000011 /* KeySheet.swift */; };
 		CF0000000000000000000001 /* MacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0000000000000000000002 /* MacApp.swift */; };
 		CF0000000000000000000003 /* MacCaptionAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0000000000000000000004 /* MacCaptionAppearance.swift */; };
+		CC0000000000000000000003 /* CaptionsControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000000 /* CaptionsControl.swift */; };
+		CC0000000000000000000004 /* StartCaptionsIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000001 /* StartCaptionsIntent.swift */; };
+		CC0000000000000000000005 /* StartCaptionsIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000001 /* StartCaptionsIntent.swift */; };
+		CC0000000000000000000007 /* CaptionsControls.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000006; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +46,10 @@
 		FB2EB03E06E9DC271222608C /* ThirdPartyNotices.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ThirdPartyNotices.txt; sourceTree = "<group>"; };
 		9CFDAB4100B482EF5CA502A3 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		CF0000000000000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CC0000000000000000000000 /* CaptionsControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionsControl.swift; sourceTree = "<group>"; };
+		CC0000000000000000000001 /* StartCaptionsIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartCaptionsIntent.swift; sourceTree = "<group>"; };
+		CC0000000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CC0000000000000000000006 /* CaptionsControls.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; path = CaptionsControls.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,11 +62,24 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		CC000000000000000000000A /* Embed App Extensions */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (CC0000000000000000000007, ); name = "Embed App Extensions"; runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		CC000000000000000000000B = {isa = PBXContainerItemProxy; containerPortal = 244210E48437B6556980A702; proxyType = 1; remoteGlobalIDString = CC000000000000000000000D; remoteInfo = CaptionsControls; };
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		CC000000000000000000000C /* CaptionsControls */ = {isa = PBXTargetDependency; platformFilter = ios; target = CC000000000000000000000D; targetProxy = CC000000000000000000000B; };
+/* End PBXTargetDependency section */
+
 /* Begin PBXGroup section */
 		0A3E27B8CA818264D75C8D81 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				A8792157CB4F27FB949C035F /* CallCaptions.app */,
+				CC0000000000000000000006 /* CaptionsControls.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -112,6 +133,7 @@
 			isa = PBXGroup;
 			children = (
 				CF0000000000000000000013 /* Sources */,
+				CC0000000000000000000008 /* Controls */,
 				2FAD566AB97C9CDEF9AAE9BD /* Info.plist */,
 				9CFDAB4100B482EF5CA502A3 /* Signing.xcconfig */,
 			);
@@ -127,6 +149,16 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		CC0000000000000000000008 /* Controls */ = {
+			isa = PBXGroup;
+			children = (
+				CC0000000000000000000000 /* CaptionsControl.swift */,
+				CC0000000000000000000001 /* StartCaptionsIntent.swift */,
+				CC0000000000000000000002 /* Info.plist */,
+			);
+			path = Controls;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -137,15 +169,28 @@
 				CAF85B0888D78F1F83771A07 /* Sources */,
 				CAFD6B725820BD8EFB592E21 /* Frameworks */,
 				E89B30AA1DC30A6AD8C34610 /* Resources */,
+				CC000000000000000000000A /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				CC000000000000000000000C /* CaptionsControls */,
 			);
 			name = CallCaptions;
 			productName = CallCaptions;
 			productReference = A8792157CB4F27FB949C035F /* CallCaptions.app */;
 			productType = "com.apple.product-type.application";
+		};
+		CC000000000000000000000D /* CaptionsControls */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC000000000000000000000E;
+			buildPhases = (CC0000000000000000000009, );
+			buildRules = ();
+			dependencies = ();
+			name = CaptionsControls;
+			productName = CaptionsControls;
+			productReference = CC0000000000000000000006;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -169,6 +214,7 @@
 			projectRoot = "";
 			targets = (
 				34A04005BCAF206EEC990BD9 /* CallCaptions */,
+				CC000000000000000000000D /* CaptionsControls */,
 			);
 		};
 /* End PBXProject section */
@@ -191,6 +237,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E50435BED9A3DD22916C41D3 /* App.swift in Sources */,
+				CC0000000000000000000005 /* StartCaptionsIntent.swift in Sources */,
 				CF0000000000000000000010 /* KeySheet.swift in Sources */,
 				CF0000000000000000000001 /* MacApp.swift in Sources */,
 				CF0000000000000000000003 /* MacCaptionAppearance.swift in Sources */,
@@ -205,6 +252,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CC0000000000000000000009 /* Control Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (CC0000000000000000000003, CC0000000000000000000004, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -227,8 +275,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 9;
+				"CURRENT_PROJECT_VERSION[sdk=iphone*]" = 10;
 				INFOPLIST_FILE = ios/Info.plist;
 				MARKETING_VERSION = 0.3.6;
+				"MARKETING_VERSION[sdk=iphone*]" = 0.3.7;
 				PRODUCT_NAME = CallCaptions;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
@@ -260,8 +310,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 9;
+				"CURRENT_PROJECT_VERSION[sdk=iphone*]" = 10;
 				INFOPLIST_FILE = ios/Info.plist;
 				MARKETING_VERSION = 0.3.6;
+				"MARKETING_VERSION[sdk=iphone*]" = 0.3.7;
 				PRODUCT_NAME = CallCaptions;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
@@ -270,6 +322,46 @@
 				"INFOPLIST_FILE[sdk=macosx*]" = macos/Info.plist;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		CC000000000000000000000F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9CFDAB4100B482EF5CA502A3 /* Signing.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 10;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ios/Controls/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "日语实时字幕";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 0.3.7;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(inherited).controls";
+				PRODUCT_NAME = CaptionsControls;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		CC0000000000000000000010 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9CFDAB4100B482EF5CA502A3 /* Signing.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 10;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ios/Controls/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "日语实时字幕";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 0.3.7;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(inherited).controls";
+				PRODUCT_NAME = CaptionsControls;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -295,6 +387,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		CC000000000000000000000E = {isa = XCConfigurationList; buildConfigurations = (CC000000000000000000000F, CC0000000000000000000010, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 	};
 	rootObject = 244210E48437B6556980A702 /* Project object */;

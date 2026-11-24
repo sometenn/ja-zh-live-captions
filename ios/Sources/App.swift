@@ -1,6 +1,7 @@
 import SwiftUI
 
 #if os(iOS)
+import AppIntents
 @main
 struct CallCaptionsApp: App {
     @StateObject private var session = Session()
@@ -12,6 +13,33 @@ struct CallCaptionsApp: App {
 private struct Home: View {
     @ObservedObject var session: Session
     @State private var settings = false
+
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var startRequested = false
+    @State private var startAfterKey = false
+    @State private var openOverlayWhenReady = false
+
+    private func handleStartRequest() {
+        guard scenePhase == .active else { return }
+        if startRequested {
+            startRequested = false
+            if session.stage == .idle {
+                guard session.hasKey else {
+                    startAfterKey = true
+                    settings = true
+                    return
+                }
+                session.begin(.translate)
+                openOverlayWhenReady = session.stage == .picking || session.stage == .listening
+            } else if session.mode == .translate && session.stage != .stopping {
+                openOverlayWhenReady = true
+            }
+        }
+        if openOverlayWhenReady && session.stage == .listening {
+            openOverlayWhenReady = false
+            session.overlay.start()
+        }
+    }
 
     private var statusIcon: String {
         if session.isReconnecting { return "arrow.triangle.2.circlepath" }
@@ -85,7 +113,21 @@ private struct Home: View {
                     Button("密钥", systemImage: "key") { settings = true }.disabled(session.stage != .idle)
                 }
             }
-            .sheet(isPresented: $settings) { KeySheet(session: session) }
+            .sheet(isPresented: $settings, onDismiss: {
+                guard startAfterKey else { return }
+                startAfterKey = false
+                startRequested = session.hasKey
+                handleStartRequest()
+            }) { KeySheet(session: session) }
+        }
+        .onAppIntentExecution(StartCaptionsIntent.self) { _ in
+            startRequested = true
+            handleStartRequest()
+        }
+        .onChange(of: scenePhase) { _, _ in handleStartRequest() }
+        .onChange(of: session.stage) { _, stage in
+            if stage == .idle || stage == .stopping { openOverlayWhenReady = false }
+            handleStartRequest()
         }
     }
 }
