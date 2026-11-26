@@ -11,9 +11,11 @@
 | 设备 | 下载文件 | 如何使用 |
 | --- | --- | --- |
 | iPhone · iOS 27 或更新版本 | `CallCaptions-iOS-unsigned.ipa` | 发布包需要使用自己的 Apple 开发团队签名。首次使用推荐通过 Xcode 从源码安装，见 [iPhone 安装说明](ios/README.md)。 |
-| Android 10 或更新版本 | `CallCaptions-Android-debug.apk` | 在手机上打开 APK，按系统提示安装。这一版使用调试签名。 |
+| Android 10 或更新版本 | `CallCaptions-Android.apk` | 在手机上打开正式签名 APK，按系统提示安装。 |
 | Apple 芯片 Mac · macOS 27 或更新版本 | `CallCaptions-macOS-arm64.zip` | 解压，将「日语实时字幕」移入「应用程序」。此版本使用本地签名，未经 Apple 公证。 |
 | Windows 10 / 11 · x64 | `CallCaptions-Windows-x64.exe` | 双击运行，已包含所需的 .NET 运行环境。 |
+
+**从 Android 调试版升级：**旧调试版和正式版使用不同的签名。请先确认能重新取得自己的 API 密钥，再卸载旧版、安装正式版。卸载会清除本机保存的密钥和偏好设置。首次安装可直接打开正式版 APK。
 
 ## 第一次使用
 
@@ -37,4 +39,4 @@
 
 API 密钥保存在当前设备。iPhone 和 Mac 使用系统钥匙串，Android 使用 Android Keystore 保护本地密钥数据，Windows 使用当前用户的系统数据保护机制。请只在应用的密钥设置中输入 API 密钥。
 
-第三方组件的署名和许可见 [ThirdPartyNotices.txt](ThirdPartyNotices.txt)。
+本项目采用 [MIT 许可证](LICENSE)。第三方组件的署名和许可见 [ThirdPartyNotices.txt](ThirdPartyNotices.txt)。

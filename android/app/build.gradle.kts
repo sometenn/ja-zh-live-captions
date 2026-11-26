@@ -4,6 +4,29 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
 }
 
+abstract class PrepareReleaseNotices : DefaultTask() {
+  @get:InputFiles
+  @get:PathSensitive(PathSensitivity.NAME_ONLY)
+  abstract val notices: ConfigurableFileCollection
+
+  @get:OutputDirectory
+  abstract val outputDirectory: DirectoryProperty
+
+  @TaskAction
+  fun copyNotices() {
+    val directory = outputDirectory.get().asFile
+    directory.mkdirs()
+    notices.forEach { it.copyTo(directory.resolve(it.name), overwrite = true) }
+  }
+}
+
+androidComponents.onVariants(androidComponents.selector().withBuildType("release")) { variant ->
+  val task = tasks.register<PrepareReleaseNotices>("prepareReleaseNotices") {
+    notices.from(rootProject.file("../LICENSE"), rootProject.file("../ThirdPartyNotices.txt"))
+  }
+  variant.sources.assets?.addGeneratedSourceDirectory(task, PrepareReleaseNotices::outputDirectory)
+}
+
 android {
   namespace = "com.sometenn.callcaptions"
   compileSdk = 36
