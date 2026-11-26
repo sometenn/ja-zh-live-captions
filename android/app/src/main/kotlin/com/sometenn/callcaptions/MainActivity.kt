@@ -1,5 +1,7 @@
 package com.sometenn.callcaptions
 
+import android.content.Intent
+import androidx.compose.runtime.mutableIntStateOf
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,9 +25,21 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private val tileRequests = mutableIntStateOf(0)
+
+    private fun receiveLaunch(intent: Intent) {
+        if (intent.component?.className == "$packageName.StartCaptions") tileRequests.intValue++
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        receiveLaunch(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        if (savedInstanceState == null) receiveLaunch(intent)
         enableEdgeToEdge()
         setContent {
             CallCaptionsTheme {
@@ -33,7 +47,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    HomeRoute(viewModel = viewModel)
+                    HomeRoute(viewModel = viewModel, tileRequests = tileRequests.intValue)
                 }
             }
         }

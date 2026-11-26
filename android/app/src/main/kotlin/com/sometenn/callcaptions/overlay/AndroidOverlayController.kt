@@ -67,8 +67,8 @@ class AndroidOverlayController(
     private var probeStatusView: TextView? = null
     private var probeMeterView: TextView? = null
 
-    private var savedX: Int = 0
-    private var savedY: Int? = null
+    private var savedX = prefs.getString("overlayWindowX")?.toIntOrNull() ?: 0
+    private var savedY = prefs.getString("overlayWindowY")?.toIntOrNull()
 
     fun canDrawOverlays(): Boolean = Settings.canDrawOverlays(appContext)
 
@@ -108,8 +108,10 @@ class AndroidOverlayController(
                 PixelFormat.TRANSLUCENT,
             ).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                x = savedX
-                y = savedY ?: dp(96)
+                val metrics = appContext.resources.displayMetrics
+                val edge = ((metrics.widthPixels - width) / 2).coerceAtLeast(0)
+                x = savedX.coerceIn(-edge, edge)
+                y = (savedY ?: dp(96)).coerceIn(0, (metrics.heightPixels - dp(80)).coerceAtLeast(0))
             }
 
             val view = buildOverlayView(params, currentAppearance)
@@ -154,18 +156,23 @@ class AndroidOverlayController(
         val view = rootView ?: return
         val params = layoutParams ?: return
 
-        backgroundDrawable?.setColor(Color.argb(appearance.backgroundAlphaByte, 11, 19, 28))
+        backgroundDrawable?.setColor(Color.argb(appearance.backgroundAlphaByte, 11, 33, 36))
 
         topView?.apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.topTextSizeSp)
+            typeface = Typeface.create(appearance.face.family, Typeface.NORMAL)
             maxLines = appearance.maxLines
         }
         bottomView?.apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.bottomTextSizeSp)
+            typeface = Typeface.create(appearance.face.family, Typeface.BOLD)
+            setTextColor(appearance.ink.argb)
             maxLines = appearance.maxLines
         }
         largeChineseView?.apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.chineseOnlyTextSizeSp)
+            typeface = Typeface.create(appearance.face.family, Typeface.BOLD)
+            setTextColor(appearance.ink.argb)
             maxLines = appearance.chineseOnlyMaxLines
         }
 
@@ -205,7 +212,7 @@ class AndroidOverlayController(
         appearance: OverlayAppearance,
     ): LinearLayout {
         val bg = GradientDrawable().apply {
-            setColor(Color.argb(appearance.backgroundAlphaByte, 11, 19, 28))
+            setColor(Color.argb(appearance.backgroundAlphaByte, 11, 33, 36))
             cornerRadius = dp(14).toFloat()
             setStroke(dp(1), Color.argb(72, 255, 255, 255))
         }
@@ -256,6 +263,7 @@ class AndroidOverlayController(
         val topText = TextView(appContext).apply {
             setTextColor(Color.argb(210, 216, 228, 242))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.topTextSizeSp)
+            typeface = Typeface.create(appearance.face.family, Typeface.NORMAL)
             maxLines = appearance.maxLines
             ellipsize = TextUtils.TruncateAt.START
             setPadding(0, dp(4), 0, dp(2))
@@ -264,7 +272,8 @@ class AndroidOverlayController(
         val bottomText = TextView(appContext).apply {
             setTextColor(Color.WHITE)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.bottomTextSizeSp)
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = Typeface.create(appearance.face.family, Typeface.BOLD)
+            setTextColor(appearance.ink.argb)
             maxLines = appearance.maxLines
             ellipsize = TextUtils.TruncateAt.START
             setPadding(0, dp(2), 0, 0)
@@ -273,7 +282,8 @@ class AndroidOverlayController(
         val largeChinese = TextView(appContext).apply {
             setTextColor(Color.WHITE)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, appearance.chineseOnlyTextSizeSp)
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = Typeface.create(appearance.face.family, Typeface.BOLD)
+            setTextColor(appearance.ink.argb)
             maxLines = appearance.chineseOnlyMaxLines
             ellipsize = TextUtils.TruncateAt.START
             setPadding(0, dp(6), 0, dp(2))
@@ -324,8 +334,11 @@ class AndroidOverlayController(
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    params.x = initialX + (event.rawX - initialTouchX).roundToInt()
-                    params.y = (initialY + (event.rawY - initialTouchY).roundToInt()).coerceAtLeast(0)
+                    val metrics = appContext.resources.displayMetrics
+                    val edge = ((metrics.widthPixels - params.width) / 2).coerceAtLeast(0)
+                    params.x = (initialX + (event.rawX - initialTouchX).roundToInt()).coerceIn(-edge, edge)
+                    params.y = (initialY + (event.rawY - initialTouchY).roundToInt())
+                        .coerceIn(0, (metrics.heightPixels - container.height).coerceAtLeast(0))
                     savedX = params.x
                     savedY = params.y
                     if (rootView != null) {
@@ -335,6 +348,11 @@ class AndroidOverlayController(
                             // Ignore if detached mid-drag.
                         }
                     }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    prefs.putString("overlayWindowX", params.x.toString())
+                    prefs.putString("overlayWindowY", params.y.toString())
                     true
                 }
                 else -> false
@@ -385,7 +403,7 @@ class AndroidOverlayController(
                 val budget = currentAppearance.charBudget(isChineseOnly = true)
                 large.text = CaptionTextLayout.fitRecentPhrase(style.text) { it.length <= budget }
                 large.setTextColor(
-                    if (style.isPlaceholder) Color.argb(170, 210, 224, 240) else Color.WHITE,
+                    if (style.isPlaceholder) Color.argb(170, 210, 224, 240) else currentAppearance.ink.argb,
                 )
                 top.visibility = View.GONE
                 bottom.visibility = View.GONE

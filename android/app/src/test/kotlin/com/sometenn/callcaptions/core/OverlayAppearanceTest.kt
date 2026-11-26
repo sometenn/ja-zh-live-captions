@@ -46,6 +46,10 @@ class OverlayAppearanceTest {
             widthPercent = 80,
             maxLines = 3,
             backgroundAlphaPercent = 65,
+            sourceSize = 19,
+            translationSize = 28,
+            face = CaptionFace.SERIF,
+            ink = CaptionInk.MINT,
         )
         custom.save(prefs)
         val loaded = OverlayAppearance.load(prefs)

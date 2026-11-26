@@ -63,6 +63,8 @@ public partial class CaptionDisplayControl : UserControl
         }
 
         double availableWidth = Math.Max(40.0, ActualWidth - padX * 2.0);
+        double availableHeight = Math.Max(1, ActualHeight - padY * 2 - (_frame.Banner is null ? 0 : 25));
+        double sourceRatio = _appearance.SourceSize / (_appearance.SourceSize + _appearance.TranslationSize);
         FontFamily fontFamily = ResolveFontFamily();
         Brush inkBrush = ResolveInkBrush();
 
@@ -75,8 +77,8 @@ public partial class CaptionDisplayControl : UserControl
         {
             case OverlayStyle.Bilingual bilingual:
             {
-                string topFitted = FitLine(bilingual.Top, fontFamily, _appearance.SourceSize, FontWeights.Normal, availableWidth);
-                string bottomFitted = FitLine(bilingual.Bottom, fontFamily, _appearance.TranslationSize, FontWeights.SemiBold, availableWidth);
+                string topFitted = FitLine(bilingual.Top, fontFamily, _appearance.SourceSize, FontWeights.Normal, availableWidth, (availableHeight - 6) * sourceRatio);
+                string bottomFitted = FitLine(bilingual.Bottom, fontFamily, _appearance.TranslationSize, FontWeights.SemiBold, availableWidth, (availableHeight - 6) * (1 - sourceRatio));
 
                 TopText.FontFamily = fontFamily;
                 TopText.FontSize = _appearance.SourceSize;
@@ -95,7 +97,7 @@ public partial class CaptionDisplayControl : UserControl
             }
             case OverlayStyle.ChineseOnly chineseOnly:
             {
-                string fitted = FitLine(chineseOnly.Text, fontFamily, _appearance.TranslationSize, FontWeights.SemiBold, availableWidth);
+                string fitted = FitLine(chineseOnly.Text, fontFamily, _appearance.TranslationSize, FontWeights.SemiBold, availableWidth, availableHeight);
                 BottomText.FontFamily = fontFamily;
                 BottomText.FontSize = _appearance.TranslationSize;
                 BottomText.FontWeight = FontWeights.SemiBold;
@@ -137,11 +139,15 @@ public partial class CaptionDisplayControl : UserControl
         _ => Brushes.White
     };
 
-    private string FitLine(string raw, FontFamily fontFamily, double fontSize, FontWeight weight, double maxWidth)
+    private string FitLine(string raw, FontFamily fontFamily, double fontSize, FontWeight weight, double maxWidth, double maxHeight)
     {
         if (string.IsNullOrEmpty(raw)) return string.Empty;
         double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
         var typeface = new Typeface(fontFamily, FontStyles.Normal, weight, FontStretches.Normal);
+
+        double lineHeight = new FormattedText("日", CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+            typeface, fontSize, Brushes.White, dpi).Height;
+        double allowedHeight = Math.Min(Math.Clamp(_appearance.MaxLines, 1, 4) * lineHeight, Math.Max(maxHeight, lineHeight));
 
         return CaptionTextLayout.FitRecentPhrase(raw, candidate =>
         {
@@ -153,7 +159,8 @@ public partial class CaptionDisplayControl : UserControl
                 fontSize,
                 Brushes.White,
                 dpi);
-            return ft.WidthIncludingTrailingWhitespace <= maxWidth;
+            ft.MaxTextWidth = maxWidth;
+            return ft.Height <= allowedHeight + 0.5;
         });
     }
 }

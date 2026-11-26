@@ -21,15 +21,15 @@ import androidx.compose.ui.graphics.Color
 //Start - Partial Color List
 
 //Light Colors
-val primaryLight = Color(0xFF00506E)
-val primaryContainerLight = Color(0xFF23759B)
+val primaryLight = Color(0xFF156E61)
+val primaryContainerLight = Color(0xFFB4EBDA)
 val secondaryLight = Color(0xFF486271)
 val tertiaryLight = Color(0xFF613A73)
 
 
 //Dark Colors
-val primaryDark = Color(0xFF87CFF9)
-val primaryContainerDark = Color(0xFF005C7D)
+val primaryDark = Color(0xFF8DDDC6)
+val primaryContainerDark = Color(0xFF175446)
 val secondaryDark = Color(0xFFB0CADC)
 val tertiaryDark = Color(0xFFE6B5F8)
 

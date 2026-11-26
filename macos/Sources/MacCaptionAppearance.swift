@@ -18,6 +18,7 @@ struct MacCaptionAppearance: DynamicProperty {
     @AppStorage("mac.caption.fontFamily") var family = ""
     @AppStorage("mac.caption.sourceSize") var sourceSize = 18.0
     @AppStorage("mac.caption.translationSize") var translationSize = 30.0
+    @AppStorage("mac.caption.maxLines") var maxLines = 1
     @AppStorage("mac.caption.ink") var ink = CaptionInk.white
     @AppStorage("mac.caption.opacity") var opacity = 92.0
 
@@ -29,6 +30,7 @@ struct MacCaptionAppearance: DynamicProperty {
     }
 
     func restoreDefaults() {
+        maxLines = 1
         family = ""
         sourceSize = 18
         translationSize = 30
@@ -68,6 +70,12 @@ struct MacAppearanceControls: View {
                     ForEach(CaptionInk.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }.pickerStyle(.segmented).labelsHidden()
             }
+            GridRow {
+                Label("最多显示", systemImage: "text.alignleft")
+                Picker("最多显示", selection: style.$maxLines) {
+                    ForEach(1...4, id: \.self) { Text("\($0) 行").tag($0) }
+                }.pickerStyle(.segmented).labelsHidden()
+            }
             slider("底色浓度", icon: "circle.lefthalf.filled", value: style.$opacity, range: 25...100, unit: "%")
         }
     }
@@ -98,16 +106,18 @@ struct MacCaptionDisplay: View {
 
     var body: some View {
         GeometryReader { geometry in
+            let available = max(1, geometry.size.height - (frame.banner == nil ? 8 : 40))
+            let ratio = style.sourceSize / (style.sourceSize + style.translationSize)
             VStack(alignment: .leading, spacing: 7) {
                 if let banner = frame.banner {
                     Text(banner.text).font(.callout).foregroundStyle(.yellow)
                 }
                 switch frame.style {
                 case let .bilingual(top, bottom):
-                    caption(top, width: geometry.size.width - 40, translated: false)
-                    caption(bottom, width: geometry.size.width - 40, translated: true)
+                    caption(top, width: geometry.size.width - 40, height: available * ratio, translated: false)
+                    caption(bottom, width: geometry.size.width - 40, height: available * (1 - ratio), translated: true)
                 case let .chineseOnly(text, _):
-                    caption(text, width: geometry.size.width - 40, translated: true)
+                    caption(text, width: geometry.size.width - 40, height: available, translated: true)
                 case let .probe(status, meter):
                     Text(status).font(.headline)
                     Text(meter).font(.system(size: 24, design: .monospaced)).foregroundStyle(.mint)
@@ -120,12 +130,17 @@ struct MacCaptionDisplay: View {
         .background(Color(red: 0.045, green: 0.13, blue: 0.14).opacity(style.opacity / 100))
     }
 
-    private func caption(_ text: String, width: CGFloat, translated: Bool) -> some View {
+    private func caption(_ text: String, width: CGFloat, height: CGFloat, translated: Bool) -> some View {
         let font = style.font(size: translated ? style.translationSize : style.sourceSize, translated: translated)
-        let recent = CaptionTextLayout.fitRecentPhrase(text) {
-            ($0 as NSString).size(withAttributes: [.font: font]).width <= max(1, width)
+        let lineHeight = NSLayoutManager().defaultLineHeight(for: font)
+        let lines = min(style.maxLines, max(1, Int(height / max(1, lineHeight))))
+        let recent = CaptionTextLayout.fitRecentPhrase(text) { candidate in
+            let bounds = (candidate as NSString).boundingRect(
+                with: NSSize(width: max(1, width), height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: font])
+            return bounds.height <= ceil(lineHeight * CGFloat(lines)) + 0.5
         }
-        return Text(verbatim: recent).font(Font(font)).lineLimit(1)
+        return Text(verbatim: recent).font(Font(font)).lineLimit(lines)
             .foregroundStyle(translated ? style.ink.color : Color.white.opacity(0.82))
     }
 }

@@ -4,7 +4,7 @@
         xmlns:ui="clr-namespace:CallCaptions.App.UI"
         Title="日语实时字幕"
         Icon="pack://application:,,,/Assets/AppIcon.ico"
-        Width="620"
+        Width="960"
         Height="690"
         MinWidth="545"
         MinHeight="640"
@@ -105,6 +105,10 @@
     </Window.Resources>
 
     <Grid Margin="24">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition x:Name="SettingsColumn" Width="0" />
+        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -114,7 +118,7 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <DockPanel Grid.Row="0" Margin="0,0,0,18">
+        <DockPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,18">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <Image Source="pack://application:,,,/Assets/AppIcon.png"
                        Width="42"
@@ -131,13 +135,13 @@
                     DockPanel.Dock="Right"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center"
-                    Content="🔑 密钥"
+                    Content="密钥"
                     Style="{StaticResource SecondaryButtonStyle}"
                     Click="KeyButton_Click" />
         </DockPanel>
 
         <!-- Preview section -->
-        <StackPanel Grid.Row="1" Margin="0,0,0,18">
+        <StackPanel x:Name="PreviewSection" Grid.Row="1" Margin="0,0,0,18">
             <DockPanel Margin="0,0,0,8">
                 <TextBlock x:Name="PreviewTitleText"
                            Text="字幕预览"
@@ -165,13 +169,13 @@
         </StackPanel>
 
         <!-- Settings Card -->
-        <Border Grid.Row="2"
+        <Border x:Name="SettingsCard" Grid.Row="2" Grid.RowSpan="2" VerticalAlignment="Top"
                 Background="{StaticResource CardBgBrush}"
                 BorderBrush="{StaticResource BorderBrushSubtle}"
                 BorderThickness="1"
                 CornerRadius="14"
                 Padding="16">
-            <StackPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
                 <DockPanel Margin="0,0,0,12">
                     <Border Background="#E7ECEC" CornerRadius="8" Padding="3" HorizontalAlignment="Left">
                         <StackPanel Orientation="Horizontal">
@@ -330,6 +334,21 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="52" />
                         </Grid.ColumnDefinitions>
+                        <TextBlock Text="最多显示行数" VerticalAlignment="Center" FontSize="13" />
+                        <Slider x:Name="MaxLinesSlider"
+                                Grid.Column="1"
+                                Minimum="1" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center"
+                                ValueChanged="AppearanceSlider_ValueChanged" />
+                        <TextBlock x:Name="MaxLinesLabel" Grid.Column="2" HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="105" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="52" />
+                        </Grid.ColumnDefinitions>
                         <TextBlock Text="底色浓度" VerticalAlignment="Center" FontSize="13" />
                         <Slider x:Name="OpacitySlider"
                                 Grid.Column="1"
@@ -340,11 +359,11 @@
                                    VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
                     </Grid>
                 </StackPanel>
-            </StackPanel>
+            </StackPanel></ScrollViewer>
         </Border>
 
         <!-- Footer -->
-        <StackPanel Grid.Row="4" Margin="0,14,0,0">
+        <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Margin="0,14,0,0">
             <Separator Background="{StaticResource BorderBrushSubtle}" Margin="0,0,0,12" />
             <DockPanel>
                 <TextBlock x:Name="StatusText"
@@ -361,11 +380,11 @@
                             Margin="0,0,8,0"
                             Click="ProbeButton_Click" />
                     <Button x:Name="StartButton"
-                            Content="▶ 开始翻译"
+                            Content="开始翻译"
                             Style="{StaticResource PrimaryButtonStyle}"
                             Click="StartButton_Click" />
                     <Button x:Name="StopButton"
-                            Content="■ 结束收音"
+                            Content="结束收音"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Visibility="Collapsed"
                             Click="StopButton_Click" />

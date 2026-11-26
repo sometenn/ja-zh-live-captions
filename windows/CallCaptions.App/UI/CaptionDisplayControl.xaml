@@ -10,10 +10,10 @@
                            Foreground="#FFD95A"
                            Margin="0,0,0,6"
                            TextTrimming="CharacterEllipsis" />
-                <TextBlock x:Name="TopText"
+                <TextBlock x:Name="TopText" TextWrapping="Wrap"
                            Visibility="Collapsed"
                            Margin="0,0,0,6" />
-                <TextBlock x:Name="BottomText"
+                <TextBlock x:Name="BottomText" TextWrapping="Wrap"
                            Visibility="Collapsed" />
                 <TextBlock x:Name="ProbeStatusText"
                            Visibility="Collapsed"

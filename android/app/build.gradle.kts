@@ -11,8 +11,8 @@ android {
     applicationId = "com.sometenn.callcaptions"
     minSdk = 29
     targetSdk = 36
-    versionCode = 1
-    versionName = "0.3.6-android-alpha1"
+    versionCode = 2
+    versionName = "0.4.0"
   }
 
   buildTypes {
