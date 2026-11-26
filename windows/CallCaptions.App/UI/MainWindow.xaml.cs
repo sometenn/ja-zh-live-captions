@@ -1,10 +1,13 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Markup;
 using System.Windows.Media;
 using CallCaptions.App.Audio;
 using CallCaptions.App.Overlay;
 using CallCaptions.Core;
+
+using Forms = System.Windows.Forms;
 
 namespace CallCaptions.App.UI;
 
@@ -15,6 +18,8 @@ public partial class MainWindow : Window
     private readonly JsonSettingsStore _settingsStore;
     private readonly WindowsOverlayController _overlay;
     private readonly Session _session;
+    private readonly Forms.NotifyIcon _tray;
+    private bool _openOverlayOnStart;
     private bool _updatingUi;
 
     public MainWindow()
@@ -30,12 +35,56 @@ public partial class MainWindow : Window
             overlay: _overlay,
             makeCapture: source => new WindowsAudioCapture(source));
 
+        var menu = new Forms.ContextMenuStrip();
+        menu.Items.Add("开启实时字幕", null, (_, _) => Dispatcher.Invoke(QuickStart));
+        menu.Items.Add("打开日语实时字幕", null, (_, _) => Dispatcher.Invoke(ShowHome));
+        _tray = new Forms.NotifyIcon {
+            Text = "日语实时字幕",
+            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!) ?? System.Drawing.SystemIcons.Application,
+            ContextMenuStrip = menu,
+            Visible = true
+        };
+        _tray.DoubleClick += (_, _) => Dispatcher.Invoke(ShowHome);
+        SizeChanged += (_, _) => ArrangePanels();
+        ArrangePanels();
         PopulateFonts();
         SyncControlsFromState();
 
         _session.PropertyChanged += Session_PropertyChanged;
         _overlay.PropertyChanged += Overlay_PropertyChanged;
         Closing += MainWindow_Closing;
+    }
+
+    private void ArrangePanels()
+    {
+        bool wide = (ActualWidth > 0 ? ActualWidth : Width) >= 900;
+        SettingsColumn.Width = new GridLength(wide ? 400 : 0);
+        Grid.SetColumn(SettingsCard, wide ? 1 : 0);
+        Grid.SetRow(SettingsCard, wide ? 1 : 2);
+        Grid.SetRowSpan(SettingsCard, wide ? 3 : 2);
+        PreviewSection.Margin = new Thickness(0, 0, wide ? 18 : 0, 18);
+    }
+
+    private void ShowHome()
+    {
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Show();
+        Activate();
+    }
+
+    private void QuickStart()
+    {
+        ShowHome();
+        if (_session.Stage == SessionStage.Listening && _session.Mode == SessionMode.Translate) {
+            _overlay.Start();
+            return;
+        }
+        if (_session.Stage != SessionStage.Idle) return;
+        if (!_session.HasKey && new KeyDialog(_session) { Owner = this }.ShowDialog() != true) return;
+        if (!_session.HasKey) return;
+        _openOverlayOnStart = true;
+        _session.Begin(SessionMode.Translate);
+        if (_session.Stage == SessionStage.Idle) _openOverlayOnStart = false;
     }
 
     private void PopulateFonts()
@@ -82,6 +131,7 @@ public partial class MainWindow : Window
 
             SourceSizeSlider.Value = appearance.SourceSize;
             TranslationSizeSlider.Value = appearance.TranslationSize;
+            MaxLinesSlider.Value = Math.Clamp(appearance.MaxLines, 1, 4);
             OpacitySlider.Value = appearance.Opacity;
 
             InkWhiteRadio.IsChecked = appearance.Ink == CaptionInk.White;
@@ -102,6 +152,7 @@ public partial class MainWindow : Window
         var appearance = _session.Settings.Appearance;
         SourceSizeLabel.Text = $"{(int)Math.Round(appearance.SourceSize)} pt";
         TranslationSizeLabel.Text = $"{(int)Math.Round(appearance.TranslationSize)} pt";
+        MaxLinesLabel.Text = $"{Math.Clamp(appearance.MaxLines, 1, 4)} 行";
         OpacityLabel.Text = $"{(int)Math.Round(appearance.Opacity)} %";
     }
 
@@ -141,6 +192,10 @@ public partial class MainWindow : Window
 
     private void Session_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(Session.Stage) && _openOverlayOnStart) {
+            if (_session.Stage == SessionStage.Listening) _overlay.Start();
+            if (_session.Stage != SessionStage.Picking) _openOverlayOnStart = false;
+        }
         _updatingUi = true;
         try
         {
@@ -210,6 +265,7 @@ public partial class MainWindow : Window
         if (_updatingUi || !IsLoaded) return;
         _session.Settings.Appearance.SourceSize = Math.Round(SourceSizeSlider.Value);
         _session.Settings.Appearance.TranslationSize = Math.Round(TranslationSizeSlider.Value);
+        _session.Settings.Appearance.MaxLines = (int)MaxLinesSlider.Value;
         _session.Settings.Appearance.Opacity = Math.Round(OpacitySlider.Value);
         ApplyAppearanceChange();
     }
@@ -283,6 +339,9 @@ public partial class MainWindow : Window
         _overlay.PropertyChanged -= Overlay_PropertyChanged;
         _session.Finish();
         _overlay.DisposeWindow();
+        _tray.Visible = false;
+        _tray.ContextMenuStrip?.Dispose();
+        _tray.Dispose();
     }
 
     private sealed class PreloadedSettingsStore(ISettingsStore inner, AppSettingsData preloaded) : ISettingsStore

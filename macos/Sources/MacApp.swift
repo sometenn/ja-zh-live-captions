@@ -5,20 +5,36 @@ import SwiftUI
 @main
 struct MacCaptionsApp: App {
     @StateObject private var session = Session()
+    @State private var quickStart = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
         Window("日语实时字幕", id: "home") {
-            MacHome(session: session, overlay: session.overlay)
+            MacHome(session: session, overlay: session.overlay, quickStart: $quickStart)
                 .frame(minWidth: 535, minHeight: 620)
                 .onDisappear { session.finish() }
         }
-        .defaultSize(width: 600, height: 650)
+        .defaultSize(width: 960, height: 620)
+        MenuBarExtra("日语实时字幕", systemImage: "captions.bubble") {
+            Button("开启实时字幕") {
+                openWindow(id: "home")
+                NSApp.activate(ignoringOtherApps: true)
+                quickStart = true
+            }
+            Button("打开日语实时字幕") {
+                openWindow(id: "home")
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        }
     }
 }
 
 private struct MacHome: View {
     @ObservedObject var session: Session
     @ObservedObject var overlay: Overlay
+    @Binding var quickStart: Bool
+    @State private var showOverlayOnStart = false
+    @State private var startAfterKey = false
     @State private var keysVisible = false
     @State private var editingAppearance = false
     private let accent = Color(red: 0.10, green: 0.51, blue: 0.45)
@@ -39,44 +55,16 @@ private struct MacHome: View {
                 Button("密钥", systemImage: "key") { keysVisible = true }
                     .disabled(session.stage != .idle)
             }
-            VStack(alignment: .leading, spacing: 9) {
-                HStack {
-                    Label(session.stage == .idle ? "字幕预览" : "实时字幕", systemImage: "captions.bubble")
-                        .font(.headline)
-                    Spacer()
-                    Button(overlay.active ? "收起置顶字幕" : "开启置顶字幕", systemImage: "macwindow.on.rectangle") {
-                        if overlay.active { overlay.stop() } else { overlay.start() }
-                    }
-                    .controlSize(.small)
-                    .disabled(session.stage == .stopping)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 18) {
+                    previewCard.frame(minWidth: 405, maxWidth: .infinity)
+                    settingsCard.frame(width: 415)
                 }
-                MacCaptionDisplay(frame: session.stage == .idle ? MacCaptionDisplay.sample(session.displayMode) : session.frame)
-                    .frame(minHeight: 145, maxHeight: 210)
-                    .background(LinearGradient(colors: [Color.gray.opacity(0.2), Color.gray.opacity(0.55)],
-                                               startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .clipShape(RoundedRectangle(cornerRadius: 15))
-            }
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Picker("设置", selection: $editingAppearance) {
-                        Text("会话设置").tag(false)
-                        Text("字幕外观").tag(true)
-                    }.pickerStyle(.segmented).labelsHidden().fixedSize()
-                    Spacer()
-                    if editingAppearance {
-                        Button("恢复默认外观") { appearance.restoreDefaults() }.controlSize(.small)
-                    }
-                }
-                Divider()
-                if editingAppearance {
-                    MacAppearanceControls()
-                } else {
-                    sessionControls
+                VStack(alignment: .leading, spacing: 16) {
+                    previewCard
+                    settingsCard
                 }
             }
-            .padding(16)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14))
-            .overlay { RoundedRectangle(cornerRadius: 14).strokeBorder(.quaternary) }
             Spacer(minLength: 0)
             VStack(alignment: .leading, spacing: 10) {
                 Divider()
@@ -99,7 +87,72 @@ private struct MacHome: View {
         .padding(24)
         .tint(accent)
         .background(Color(nsColor: .windowBackgroundColor))
-        .sheet(isPresented: $keysVisible) { KeySheet(session: session).padding().frame(width: 440, height: 300) }
+        .task(id: quickStart) {
+            guard quickStart else { return }
+            quickStart = false
+            if session.stage == .idle && !session.hasKey {
+                startAfterKey = true
+                keysVisible = true
+            } else if session.stage == .idle {
+                showOverlayOnStart = true
+                session.begin(.translate)
+            } else if session.stage == .listening && session.mode == .translate {
+                overlay.start()
+            }
+        }
+        .onChange(of: session.stage) { _, stage in
+            if stage == .listening && showOverlayOnStart { overlay.start() }
+            if stage != .picking { showOverlayOnStart = false }
+        }
+        .sheet(isPresented: $keysVisible, onDismiss: {
+            guard startAfterKey else { return }
+            startAfterKey = false
+            if session.hasKey { quickStart = true }
+        }) { KeySheet(session: session).padding().frame(width: 440, height: 300) }
+    }
+
+    private var previewCard: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack {
+                Label(session.stage == .idle ? "字幕预览" : "实时字幕", systemImage: "captions.bubble")
+                    .font(.headline)
+                Spacer()
+                Button(overlay.active ? "收起置顶字幕" : "开启置顶字幕", systemImage: "macwindow.on.rectangle") {
+                    if overlay.active { overlay.stop() } else { overlay.start() }
+                }
+                .controlSize(.small)
+                .disabled(session.stage == .stopping)
+            }
+            MacCaptionDisplay(frame: session.stage == .idle ? MacCaptionDisplay.sample(session.displayMode) : session.frame)
+                .frame(minHeight: 145, maxHeight: 210)
+                .background(LinearGradient(colors: [Color.gray.opacity(0.2), Color.gray.opacity(0.55)],
+                                           startPoint: .topLeading, endPoint: .bottomTrailing))
+                .clipShape(RoundedRectangle(cornerRadius: 15))
+        }
+    }
+
+    private var settingsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Picker("设置", selection: $editingAppearance) {
+                    Text("会话设置").tag(false)
+                    Text("字幕外观").tag(true)
+                }.pickerStyle(.segmented).labelsHidden().fixedSize()
+                Spacer()
+                if editingAppearance {
+                    Button("恢复默认外观") { appearance.restoreDefaults() }.controlSize(.small)
+                }
+            }
+            Divider()
+            if editingAppearance {
+                MacAppearanceControls()
+            } else {
+                sessionControls
+            }
+        }
+        .padding(16)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14))
+        .overlay { RoundedRectangle(cornerRadius: 14).strokeBorder(.quaternary) }
     }
 
     private var sessionControls: some View {

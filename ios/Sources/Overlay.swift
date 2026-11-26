@@ -4,6 +4,29 @@ import OSLog
 import SwiftUI
 import UIKit
 
+struct PhoneCaptionAppearance: Codable, Equatable {
+    var family = ""
+    var sourceSize = 30.0
+    var translationSize = 52.0
+    var maxLines = 2
+    var ink = "白色"
+    var background = "墨绿"
+
+    var translationColor: UIColor {
+        switch ink {
+        case "薄荷": UIColor(red: 0.65, green: 0.97, blue: 0.83, alpha: 1)
+        case "暖黄": UIColor(red: 1, green: 0.87, blue: 0.56, alpha: 1)
+        default: .white
+        }
+    }
+
+    func font(size: CGFloat, translated: Bool) -> UIFont {
+        if let name = UIFont.fontNames(forFamilyName: family).first,
+           let font = UIFont(name: name, size: size) { return font }
+        return .systemFont(ofSize: size, weight: translated ? .semibold : .medium)
+    }
+}
+
 final class CaptionSurface: UIView {
     override class var layerClass: AnyClass { AVSampleBufferDisplayLayer.self }
     var display: AVSampleBufferDisplayLayer { layer as! AVSampleBufferDisplayLayer }
@@ -37,6 +60,21 @@ struct SurfaceView: UIViewRepresentable {
 @MainActor
 final class Overlay: NSObject, ObservableObject, AVPictureInPictureSampleBufferPlaybackDelegate,
                      AVPictureInPictureControllerDelegate {
+    @Published var appearance: PhoneCaptionAppearance = {
+        guard let data = UserDefaults.standard.data(forKey: "ios.caption.appearance"),
+              let value = try? JSONDecoder().decode(PhoneCaptionAppearance.self, from: data) else {
+            return PhoneCaptionAppearance()
+        }
+        return value
+    }() {
+        didSet {
+            if let data = try? JSONEncoder().encode(appearance) {
+                UserDefaults.standard.set(data, forKey: "ios.caption.appearance")
+            }
+            if let lastFrame { draw(lastFrame) }
+        }
+    }
+
     private enum Phase {
         case idle, startingCall, waitingForStandard, startingStandard, showingCall, showingStandard, stopping
     }
@@ -212,8 +250,16 @@ final class Overlay: NSObject, ObservableObject, AVPictureInPictureSampleBufferP
         }
     }
 
-    func draw(_ frame: OverlayFrame) {
-        lastFrame = frame
+    func draw(_ input: OverlayFrame) {
+        lastFrame = input
+        let frame: OverlayFrame
+        if input == CaptionPresentation.idleFrame(mode: .bilingual) {
+            frame = OverlayFrame(banner: nil, style: .bilingual(top: "今日はどんな一日でしたか？", bottom: "你今天过得怎么样？"))
+        } else if input == CaptionPresentation.idleFrame(mode: .chineseOnly) {
+            frame = OverlayFrame(banner: nil, style: .chineseOnly(text: "你今天过得怎么样？", isPlaceholder: false))
+        } else {
+            frame = input
+        }
         let width = 768, height = 224
         var buffer: CVPixelBuffer?
         let attrs = [kCVPixelBufferIOSurfacePropertiesKey as String: [:] as [String: Any]] as CFDictionary
@@ -228,7 +274,7 @@ final class Overlay: NSObject, ObservableObject, AVPictureInPictureSampleBufferP
         context.translateBy(x: 0, y: CGFloat(height))
         context.scaleBy(x: 1, y: -1)
         UIGraphicsPushContext(context)
-        UIColor(red: 0.045, green: 0.075, blue: 0.11, alpha: 1).setFill()
+        (appearance.background == "纯黑" ? UIColor.black : UIColor(red: 0.045, green: 0.13, blue: 0.14, alpha: 1)).setFill()
         UIRectFill(CGRect(x: 0, y: 0, width: width, height: height))
 
         let hasBanner = frame.banner != nil
@@ -238,39 +284,23 @@ final class Overlay: NSObject, ObservableObject, AVPictureInPictureSampleBufferP
 
         switch frame.style {
         case .bilingual(let top, let bottom):
-            if hasBanner {
-                drawCaption(top, in: CGRect(x: 24, y: 48, width: 720, height: 68),
-                            font: .systemFont(ofSize: 24, weight: .medium),
-                            color: UIColor(white: 0.80, alpha: 1),
-                            verticallyCentered: false)
-                drawCaption(bottom, in: CGRect(x: 24, y: 120, width: 720, height: 96),
-                            font: .systemFont(ofSize: 32, weight: .semibold),
-                            color: .white,
-                            verticallyCentered: false)
-            } else {
-                drawCaption(top, in: CGRect(x: 24, y: 12, width: 720, height: 86),
-                            font: .systemFont(ofSize: 30, weight: .medium),
-                            color: UIColor(white: 0.80, alpha: 1),
-                            verticallyCentered: false)
-                drawCaption(bottom, in: CGRect(x: 24, y: 104, width: 720, height: 108),
-                            font: .systemFont(ofSize: 38, weight: .semibold),
-                            color: .white,
-                            verticallyCentered: false)
-            }
+            let y: CGFloat = hasBanner ? 48 : 12
+            let height = (216 - y - 6)
+            let ratio = appearance.sourceSize / (appearance.sourceSize + appearance.translationSize)
+            let sourceHeight = floor(height * ratio)
+            drawCaption(top, in: CGRect(x: 24, y: y, width: 720, height: sourceHeight),
+                        font: appearance.font(size: appearance.sourceSize, translated: false),
+                        color: UIColor(white: 0.82, alpha: 1), verticallyCentered: true)
+            drawCaption(bottom, in: CGRect(x: 24, y: y + sourceHeight + 6, width: 720, height: height - sourceHeight),
+                        font: appearance.font(size: appearance.translationSize, translated: true),
+                        color: appearance.translationColor, verticallyCentered: true)
 
         case .chineseOnly(let text, let isPlaceholder):
-            let color = isPlaceholder ? UIColor(white: 0.72, alpha: 1) : .white
-            if hasBanner {
-                drawCaption(text, in: CGRect(x: 24, y: 50, width: 720, height: 162),
-                            font: .systemFont(ofSize: 50, weight: .semibold),
-                            color: color,
-                            verticallyCentered: true)
-            } else {
-                drawCaption(text, in: CGRect(x: 24, y: 14, width: 720, height: 196),
-                            font: .systemFont(ofSize: 54, weight: .semibold),
-                            color: color,
-                            verticallyCentered: true)
-            }
+            let y: CGFloat = hasBanner ? 50 : 14
+            drawCaption(text, in: CGRect(x: 24, y: y, width: 720, height: 212 - y),
+                        font: appearance.font(size: appearance.translationSize * 1.4, translated: true),
+                        color: isPlaceholder ? UIColor(white: 0.72, alpha: 1) : appearance.translationColor,
+                        verticallyCentered: true)
 
         case .probe(let status, let meter):
             drawCaption(status, in: CGRect(x: 24, y: 24, width: 720, height: 76),
@@ -350,8 +380,9 @@ final class Overlay: NSObject, ObservableObject, AVPictureInPictureSampleBufferP
             (candidate as NSString).boundingRect(with: CGSize(width: rect.width, height: 2000),
                                                  options: options, attributes: attrs, context: nil).height
         }
+        let availableHeight = min(rect.height, ceil(font.lineHeight * CGFloat(appearance.maxLines)))
         let fitted = CaptionTextLayout.fitRecentPhrase(text) { candidate in
-            measure(candidate) <= rect.height + 0.5
+            measure(candidate) <= availableHeight + 0.5
         }
         var drawRect = rect
         if verticallyCentered {

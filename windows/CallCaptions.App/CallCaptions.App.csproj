@@ -10,12 +10,13 @@
     <AssemblyName>CallCaptions</AssemblyName>
     <ApplicationTitle>日语实时字幕</ApplicationTitle>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
-    <Version>0.3.6</Version>
+    <Version>0.4.0</Version>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
     <Resource Include="Assets\AppIcon.ico" />
     <Resource Include="Assets\AppIcon.png" />
   </ItemGroup>

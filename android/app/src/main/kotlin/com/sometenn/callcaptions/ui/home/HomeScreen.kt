@@ -22,6 +22,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -54,6 +58,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sometenn.callcaptions.core.AudioSource
+import com.sometenn.callcaptions.core.CaptionFace
+import com.sometenn.callcaptions.core.CaptionPresentation
 import com.sometenn.callcaptions.core.CaptionDisplayMode
 import com.sometenn.callcaptions.core.CaptionTextLayout
 import com.sometenn.callcaptions.core.OverlayAppearance
@@ -67,15 +73,18 @@ import com.sometenn.callcaptions.overlay.OverlayUiState
 @Composable
 fun HomeRoute(
     viewModel: HomeViewModel,
+    tileRequests: Int = 0,
 ) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
     val overlayState by viewModel.overlayState.collectAsStateWithLifecycle()
     val mediaProjectionRequestId by viewModel.mediaProjectionRequestId.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    var showKeySheet by remember { mutableStateOf(false) }
+    var showKeySheet by rememberSaveable { mutableStateOf(false) }
     var showAppearanceSheet by remember { mutableStateOf(false) }
-    var pendingCaptureMode by remember { mutableStateOf<Session.Mode?>(null) }
+    var tileOverlay by rememberSaveable { mutableStateOf(false) }
+    var tileNeedsKey by rememberSaveable { mutableStateOf(false) }
+    var pendingCaptureMode by rememberSaveable { mutableStateOf<Session.Mode?>(null) }
 
     val audioPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -84,6 +93,7 @@ fun HomeRoute(
         pendingCaptureMode = null
         val micGranted = results[Manifest.permission.RECORD_AUDIO] == true ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        if (!micGranted) tileOverlay = false
         if (micGranted && mode != null) {
             when (mode) {
                 Session.Mode.TRANSLATE -> viewModel.beginTranslate()
@@ -154,7 +164,27 @@ fun HomeRoute(
         viewModel.startOverlay()
     }
 
+    LaunchedEffect(tileRequests) {
+        if (tileRequests == 0) return@LaunchedEffect
+        when (sessionState.stage) {
+            Session.Stage.IDLE -> if (sessionState.hasKey) {
+                tileOverlay = true
+                startWithPermissions(Session.Mode.TRANSLATE)
+            } else {
+                tileNeedsKey = true
+                showKeySheet = true
+            }
+            Session.Stage.LISTENING -> if (sessionState.mode == Session.Mode.TRANSLATE && !overlayState.active) requestOrStartOverlay()
+            else -> Unit
+        }
+    }
+
     LaunchedEffect(sessionState.stage) {
+        if (tileOverlay && sessionState.stage == Session.Stage.LISTENING) {
+            tileOverlay = false
+            if (!overlayState.active && sessionState.mode == Session.Mode.TRANSLATE) requestOrStartOverlay()
+        }
+        if (sessionState.stage == Session.Stage.STOPPING) tileOverlay = false
         if (sessionState.stage == Session.Stage.IDLE) {
             viewModel.refreshPreviewIfIdle()
         }
@@ -190,8 +220,19 @@ fun HomeRoute(
         KeySettingsSheet(
             provider = sessionState.provider,
             hasKey = sessionState.hasKey,
-            onSaveKey = viewModel::saveKey,
-            onDismiss = { showKeySheet = false },
+            onSaveKey = { key ->
+                viewModel.saveKey(key).onSuccess {
+                    if (tileNeedsKey && key.isNotBlank()) {
+                        tileNeedsKey = false
+                        tileOverlay = true
+                        startWithPermissions(Session.Mode.TRANSLATE)
+                    }
+                }
+            },
+            onDismiss = {
+                showKeySheet = false
+                tileNeedsKey = false
+            },
         )
     }
 
@@ -232,7 +273,7 @@ fun HomeScreen(
                 title = { Text("日语实时字幕") },
                 actions = {
                     TextButton(onClick = onOpenAppearance) {
-                        Text("外观")
+                        Text("字幕外观")
                     }
                     TextButton(
                         onClick = onOpenKeys,
@@ -273,62 +314,25 @@ fun HomeScreen(
                 )
             }
 
-            // Provider picker
-            val providerEnabled = sessionState.stage != Session.Stage.PICKING && sessionState.stage != Session.Stage.STOPPING
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                Provider.entries.forEachIndexed { index, provider ->
-                    SegmentedButton(
-                        selected = sessionState.provider == provider,
-                        onClick = { onSelectProvider(provider) },
-                        enabled = providerEnabled,
-                        shape = SegmentedButtonDefaults.itemShape(index = index, count = Provider.entries.size),
-                    ) {
-                        Text(provider.rawValue)
-                    }
-                }
-            }
-            if (sessionState.switchNotice.isNotEmpty()) {
-                Text(
-                    text = sessionState.switchNotice,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            // Audio source picker
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                AudioSource.entries.forEachIndexed { index, source ->
-                    SegmentedButton(
-                        selected = sessionState.source == source,
-                        onClick = { onSelectSource(source) },
-                        enabled = sessionState.stage == Session.Stage.IDLE,
-                        shape = SegmentedButtonDefaults.itemShape(index = index, count = AudioSource.entries.size),
-                    ) {
-                        Text(source.title)
-                    }
-                }
-            }
-
-            // Display mode picker
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                CaptionDisplayMode.entries.forEachIndexed { index, mode ->
-                    SegmentedButton(
-                        selected = sessionState.displayMode == mode,
-                        onClick = { onSelectDisplayMode(mode) },
-                        enabled = sessionState.stage != Session.Stage.STOPPING,
-                        shape = SegmentedButtonDefaults.itemShape(index = index, count = CaptionDisplayMode.entries.size),
-                    ) {
-                        Text(mode.title)
-                    }
-                }
-            }
-
-            // In-app preview card
+            Text(if (isListening) "实时字幕" else "字幕预览", style = MaterialTheme.typography.titleSmall)
             OverlayPreviewCard(
                 frame = sessionState.frame,
                 displayMode = sessionState.displayMode,
                 appearance = overlayState.appearance,
             )
+
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text("会话设置", style = MaterialTheme.typography.titleSmall)
+                    SessionChoice("翻译服务", sessionState.provider, Provider.entries, { it.rawValue },
+                        sessionState.stage != Session.Stage.PICKING && sessionState.stage != Session.Stage.STOPPING, onSelectProvider)
+                    SessionChoice("收音来源", sessionState.source, AudioSource.entries, { it.title },
+                        sessionState.stage == Session.Stage.IDLE, onSelectSource)
+                    SessionChoice("字幕显示", sessionState.displayMode, CaptionDisplayMode.entries, { it.title },
+                        sessionState.stage != Session.Stage.STOPPING, onSelectDisplayMode)
+                }
+            }
+            if (sessionState.switchNotice.isNotEmpty()) Text(sessionState.switchNotice)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -337,7 +341,7 @@ fun HomeScreen(
             ) {
                 val ap = overlayState.appearance
                 Text(
-                    text = "字号 ${ap.fontScalePercent}% · 宽度 ${ap.widthPercent}% · ${ap.maxLines}行 · 透明度 ${ap.backgroundAlphaPercent}%",
+                    text = "缩放 ${ap.fontScalePercent}% · 宽度 ${ap.widthPercent}% · ${ap.maxLines} 行 · 不透明度 ${ap.backgroundAlphaPercent}%",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -434,13 +438,39 @@ fun HomeScreen(
 }
 
 @Composable
+private fun <T> SessionChoice(label: String, selected: T, options: List<T>, title: (T) -> String,
+                              enabled: Boolean, onSelect: (T) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Box {
+            TextButton(onClick = { expanded = true }, enabled = enabled) { Text(title(selected) + "　▾") }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { option ->
+                    DropdownMenuItem(text = { Text(title(option)) }, onClick = {
+                        expanded = false
+                        onSelect(option)
+                    })
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun OverlayPreviewCard(
     frame: OverlayFrame,
     displayMode: CaptionDisplayMode,
     appearance: OverlayAppearance = OverlayAppearance.DEFAULT,
     modifier: Modifier = Modifier,
 ) {
-    val bgColor = Color(0xFF0B131C).copy(alpha = appearance.backgroundAlphaFloat)
+    val captionFont = when (appearance.face) {
+        CaptionFace.SYSTEM -> FontFamily.SansSerif
+        CaptionFace.SERIF -> FontFamily.Serif
+        CaptionFace.MONO -> FontFamily.Monospace
+    }
+    val bgColor = Color(0xFF0B2124).copy(alpha = appearance.backgroundAlphaFloat)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -469,7 +499,10 @@ fun OverlayPreviewCard(
                 )
             }
 
-            when (val style = frame.style) {
+            when (val style = if (frame == CaptionPresentation.idleFrame(displayMode)) {
+                if (displayMode == CaptionDisplayMode.BILINGUAL) OverlayFrame.Style.Bilingual("今日はどんな一日でしたか？", "你今天过得怎么样？")
+                else OverlayFrame.Style.ChineseOnly("你今天过得怎么样？", false)
+            } else frame.style) {
                 is OverlayFrame.Style.Bilingual -> {
                     val topBudget = appearance.charBudget(isChineseOnly = false, isTopJapanese = true)
                     val bottomBudget = appearance.charBudget(isChineseOnly = false, isTopJapanese = false)
@@ -477,6 +510,7 @@ fun OverlayPreviewCard(
                         Text(
                             text = CaptionTextLayout.fitRecentPhrase(style.top) { it.length <= topBudget },
                             color = Color(0xFFD2E0F0),
+                            fontFamily = captionFont,
                             fontSize = appearance.topTextSizeSp.sp,
                             lineHeight = (appearance.topTextSizeSp * 1.3f).sp,
                             maxLines = appearance.maxLines,
@@ -485,7 +519,8 @@ fun OverlayPreviewCard(
                     }
                     Text(
                         text = CaptionTextLayout.fitRecentPhrase(style.bottom) { it.length <= bottomBudget },
-                        color = Color.White,
+                        color = Color(appearance.ink.argb),
+                        fontFamily = captionFont,
                         fontSize = appearance.bottomTextSizeSp.sp,
                         lineHeight = (appearance.bottomTextSizeSp * 1.3f).sp,
                         fontWeight = FontWeight.Bold,
@@ -499,7 +534,8 @@ fun OverlayPreviewCard(
                     val budget = appearance.charBudget(isChineseOnly = true)
                     Text(
                         text = CaptionTextLayout.fitRecentPhrase(style.text) { it.length <= budget },
-                        color = if (style.isPlaceholder) Color(0xAAD2E0F0) else Color.White,
+                        color = if (style.isPlaceholder) Color(0xAAD2E0F0) else Color(appearance.ink.argb),
+                        fontFamily = captionFont,
                         fontSize = appearance.chineseOnlyTextSizeSp.sp,
                         lineHeight = (appearance.chineseOnlyTextSizeSp * 1.3f).sp,
                         fontWeight = FontWeight.Bold,

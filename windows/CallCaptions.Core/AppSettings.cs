@@ -27,6 +27,7 @@ public sealed class CaptionAppearanceSettings
     public double SourceSize { get; set; } = 18.0;
     public double TranslationSize { get; set; } = 30.0;
     public CaptionInk Ink { get; set; } = CaptionInk.White;
+    public int MaxLines { get; set; } = 1;
     public double Opacity { get; set; } = 92.0;
 
     public void RestoreDefaults()
@@ -35,6 +36,7 @@ public sealed class CaptionAppearanceSettings
         SourceSize = 18.0;
         TranslationSize = 30.0;
         Ink = CaptionInk.White;
+        MaxLines = 1;
         Opacity = 92.0;
     }
 }

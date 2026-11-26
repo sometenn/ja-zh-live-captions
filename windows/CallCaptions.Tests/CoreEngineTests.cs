@@ -212,12 +212,14 @@ public sealed class CoreEngineTests
                     SourceSize = 20,
                     TranslationSize = 36,
                     Ink = CaptionInk.Mint,
+                    MaxLines = 3,
                     Opacity = 80
                 }
             };
             store.Save(data);
 
             var loaded = store.Load();
+            Assert.Equal(3, loaded.Appearance.MaxLines);
             Assert.Equal(Provider.Gemini, loaded.Provider);
             Assert.Equal(AudioSource.Microphone, loaded.Source);
             Assert.Equal(CaptionDisplayMode.ChineseOnly, loaded.DisplayMode);

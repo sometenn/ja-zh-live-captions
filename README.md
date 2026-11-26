@@ -2,7 +2,7 @@
 
 iPhone、Mac、Windows 和 Android 上的实时日语转写和简体中文翻译。支持自填 Soniox 或 Gemini 密钥，收录机内声音或麦克风。iPhone 使用画中画字幕，Mac 和 Windows 使用可拖动、调整大小的原生置顶窗口，Android 使用系统悬浮窗。
 
-iOS 当前版本为 **0.3.7（构建 10）**，支持从控制中心启动字幕。普通运营商电话音频接入仍在调研。功能边界和真机操作见[使用说明](使用说明.md)。
+四端当前版本为 **0.4.0**。首页优先显示字幕，可分别调整日语和中文字号、字体、译文颜色与显示行数。普通运营商电话音频接入仍在调研。功能边界和真机操作见[使用说明](使用说明.md)。
 
 ## iOS 版本（`ios/`）
 
@@ -14,7 +14,7 @@ Mac 专属界面、置顶字幕窗、外观设置和应用配置在 [macos/](mac
 
 ## Android 版本（`android/`）
 
-Android 端位于 `android/` 目录，使用 Kotlin + Jetpack Compose 实现，最低支持 **Android 10（API 29）**，功能对齐 iOS 0.3.6（Soniox / Gemini、双语与仅大号中文、本地加密密钥、麦克风与机内声音采集、可拖动系统悬浮字幕窗）。
+Android 端位于 `android/` 目录，使用 Kotlin + Jetpack Compose 实现，最低支持 **Android 10（API 29）**，支持 Soniox / Gemini、双语与仅大号中文、本地加密密钥、麦克风与机内声音采集、可拖动系统悬浮字幕窗。
 
 运行 Android 单元测试并编译 Debug APK：
 

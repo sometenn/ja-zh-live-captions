@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.sometenn.callcaptions.core.CaptionFace
+import com.sometenn.callcaptions.core.CaptionInk
 import com.sometenn.callcaptions.core.CaptionDisplayMode
 import com.sometenn.callcaptions.core.OverlayAppearance
 import com.sometenn.callcaptions.core.OverlayFrame
@@ -89,13 +91,32 @@ fun AppearanceSheet(
                 appearance = appearance,
             )
 
+            Text("字幕字体")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CaptionFace.entries.forEach { face ->
+                    FilterChip(selected = face == appearance.face, onClick = { onUpdate(appearance.copy(face = face)) }, label = { Text(face.title) })
+                }
+            }
+            Text("译文颜色")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CaptionInk.entries.forEach { ink ->
+                    FilterChip(selected = ink == appearance.ink, onClick = { onUpdate(appearance.copy(ink = ink)) }, label = { Text(ink.title) })
+                }
+            }
+            Text("日语字号 · ${appearance.sourceSize} sp")
+            Slider(value = appearance.sourceSize.toFloat(), valueRange = 12f..34f,
+                onValueChange = { onUpdate(appearance.copy(sourceSize = it.roundToInt())) })
+            Text("中文字号 · ${appearance.translationSize} sp")
+            Slider(value = appearance.translationSize.toFloat(), valueRange = 16f..52f,
+                onValueChange = { onUpdate(appearance.copy(translationSize = it.roundToInt())) })
+
             // 1. Font scale
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("字幕字号", style = MaterialTheme.typography.titleSmall)
+                    Text("整体缩放", style = MaterialTheme.typography.titleSmall)
                     Text(
                         "${appearance.fontScalePercent}%",
                         style = MaterialTheme.typography.bodyMedium,

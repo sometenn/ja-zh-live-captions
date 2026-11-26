@@ -28,6 +28,14 @@
             </intent-filter>
         </activity>
 
+        <activity-alias android:name=".StartCaptions" android:targetActivity=".MainActivity" android:exported="false" />
+
+        <service android:name=".service.CaptionTileService" android:exported="true"
+            android:label="开启实时字幕" android:icon="@drawable/ic_caption_tile"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+
         <service
             android:name=".service.CaptionForegroundService"
             android:exported="false"
