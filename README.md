@@ -1,57 +1,40 @@
 # 日语实时字幕 · CallCaptions
 
-iPhone、Mac、Windows 和 Android 上的实时日语转写和简体中文翻译。支持自填 Soniox 或 Gemini 密钥，收录机内声音或麦克风。iPhone 使用画中画字幕，Mac 和 Windows 使用可拖动、调整大小的原生置顶窗口，Android 使用系统悬浮窗。
+在 iPhone、Android、Mac 或 Windows 上观看日语视频时，把简体中文译文悬浮在画面上。想对照学习，可以同时显示日语原文。和人面对面交谈时，也可以改用麦克风收音。字幕随语音逐步更新，尚未确认的词句可能修订。
 
-四端当前版本为 **0.4.0**。首页优先显示字幕，可分别调整日语和中文字号、字体、译文颜色与显示行数。普通运营商电话音频接入仍在调研。功能边界和真机操作见[使用说明](使用说明.md)。
+**[下载最新版本](https://github.com/sometenn/ja-zh-live-captions/releases/latest)** · [各平台使用说明](使用说明.md)
 
-## iOS 版本（`ios/`）
+## 下载与安装
 
-iPhone 首页、画中画字幕、应用配置和开发入口位于 [ios/](ios/)。用 Xcode 打开 `ios/CallCaptions.xcworkspace`，选择 `CallCaptions` 和目标 iPhone 即可运行。真机签名和命令行构建见 [iOS 开发说明](ios/README.md)。
+在发布页展开 **Assets**，按设备选择文件。下表适用于 1.0.0。
 
-## Mac 版本（`macos/`）
+| 设备 | 下载文件 | 如何使用 |
+| --- | --- | --- |
+| iPhone · iOS 27 或更新版本 | `CallCaptions-iOS-unsigned.ipa` | 发布包需要使用自己的 Apple 开发团队签名。首次使用推荐通过 Xcode 从源码安装，见 [iPhone 安装说明](ios/README.md)。 |
+| Android 10 或更新版本 | `CallCaptions-Android-debug.apk` | 在手机上打开 APK，按系统提示安装。这一版使用调试签名。 |
+| Apple 芯片 Mac · macOS 27 或更新版本 | `CallCaptions-macOS-arm64.zip` | 解压，将「日语实时字幕」移入「应用程序」。此版本使用本地签名，未经 Apple 公证。 |
+| Windows 10 / 11 · x64 | `CallCaptions-Windows-x64.exe` | 双击运行，已包含所需的 .NET 运行环境。 |
 
-Mac 专属界面、置顶字幕窗、外观设置和应用配置在 [macos/](macos/)。用 Xcode 打开该目录的 `CallCaptions.xcworkspace`，选择 `CallCaptions` 和「My Mac」即可运行。收音与实时翻译逻辑由两个 Apple 平台共享。环境要求与命令行构建见 [Mac 开发说明](macos/README.md)。
+## 第一次使用
 
-## Android 版本（`android/`）
+1. **先测声音。** 看视频选「机内声音」，听身边的人讲话选「麦克风」。点测试收音按钮并按系统提示授权，播放几秒视频或说一句话，看音量条是否随声音跳动。这一步在本机完成，无需 API 密钥。
+2. **设置翻译服务。** 结束测试，在应用中选择 Soniox 或 Gemini，打开密钥设置，保存自己在该服务申请的 API 密钥。只需配置打算使用的服务。
+3. **开始看字幕。** 点「开始翻译」，按提示开启悬浮字幕或置顶字幕，切回视频。结束时回到应用停止收音或共享。切换收音来源前也请先结束当前会话。
 
-Android 端位于 `android/` 目录，使用 Kotlin + Jetpack Compose 实现，最低支持 **Android 10（API 29）**，支持 Soniox / Gemini、双语与仅大号中文、本地加密密钥、麦克风与机内声音采集、可拖动系统悬浮字幕窗。
+## 按自己的习惯阅读
 
-运行 Android 单元测试并编译 Debug APK：
+- 选择双语模式可以对照日语原文和中文译文；选择「仅大号中文」可以给译文留出更多空间。在「字幕外观」中可分别调整两种语言的字号，也可设置字体、译文颜色和显示行数。
+- iPhone 使用系统画中画，可在控制中心添加「开启实时字幕」。Android 使用可拖动的悬浮窗，首次开启需允许「显示在其他应用上层」，也可从下拉快捷设置启动。
+- Mac 和 Windows 的置顶字幕窗均可拖动、缩放。应用运行时，可从 Mac 菜单栏或 Windows 通知区域快速开启字幕。
 
-```sh
-cd android
-./gradlew test assembleDebug
-```
+## 通话和机内声音
 
-编译产物位于 `android/app/build/outputs/apk/debug/app-debug.apk`（由 Git 忽略）。真机使用与机内声音限制见[使用说明](使用说明.md)。
+机内收音取决于系统和播放声音的应用。普通运营商电话的对端音频目前不受支持。网页会议、语音聊天和受保护的视频也可能限制采集。判断某个会议能否使用，最直接的办法是戴上平时使用的耳机，在实际通话里运行收音测试，让对方说几秒，再观察音量条。
 
-## Windows 版本（`windows/`）
+## 隐私与费用
 
-Windows 桌面端位于 [windows/](windows/)，使用 C# / .NET 8 + WPF 实现，功能对齐 Mac 版（Soniox / Gemini、WASAPI 机内声音与麦克风、测试收音、可拖动和缩放置顶字幕窗、字幕外观自定义、DPAPI 本地加密密钥）。
+测试收音仅在设备上处理。开始翻译后，应用会把所选来源的声音直接发送给所选的 Soniox 或 Gemini 服务，使用量和费用计入自己的服务账户。机内声音可能包含同时播放的其他应用。Gemini 会话可能产生语音输出费用，即使界面只显示字幕。
 
-运行 Windows 单元测试、启动应用或打包单文件 `.exe`：
+API 密钥保存在当前设备。iPhone 和 Mac 使用系统钥匙串，Android 使用 Android Keystore 保护本地密钥数据，Windows 使用当前用户的系统数据保护机制。请只在应用的密钥设置中输入 API 密钥。
 
-```powershell
-cd windows
-dotnet test CallCaptions.sln
-dotnet run --project CallCaptions.App\CallCaptions.App.csproj
-dotnet publish CallCaptions.App\CallCaptions.App.csproj -p:PublishProfile=win-x64-singlefile
-```
-
-单文件产物位于 `windows/publish/win-x64/CallCaptions.exe`（由 Git 忽略）。详细说明见 [Windows 开发说明](windows/README.md)。
-
-## Apple 共享代码与本地检查
-
-iOS 和 macOS 共用根目录的 Xcode 工程、`Sources/`、`Assets.xcassets/` 和回归测试。可以从仓库根目录在 Mac 上运行会话测试。
-
-```sh
-swiftc -parse-as-library Sources/{Captions,PCM,Soniox,Gemini,Vault,Capture,Session}.swift \
-  ios/Sources/Overlay.swift Tests/SessionTests.swift -o /tmp/callcaptions-session-tests
-/tmp/callcaptions-session-tests
-```
-
-## 多台电脑协作
-
-每台电脑克隆同一个仓库。每个 AI 或开发任务从最新 `main` 开独立分支，推送后发 Pull Request。跨电脑继续同一项工作时，检出对应分支。签名和 API 密钥按设备配置。
-
-第三方代码的署名和许可见 [ThirdPartyNotices.txt](ThirdPartyNotices.txt)。
+第三方组件的署名和许可见 [ThirdPartyNotices.txt](ThirdPartyNotices.txt)。
