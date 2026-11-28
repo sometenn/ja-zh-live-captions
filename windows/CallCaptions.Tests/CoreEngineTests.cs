@@ -10,6 +10,19 @@ public sealed class CoreEngineTests
         new(text, isFinal, translated ? "translation" : "original");
 
     [Fact]
+    public void MainWindowFitsLongerCaptionsAndHasIndependentLineLimit()
+    {
+        var appearance = new CaptionAppearanceSettings();
+        Assert.Equal(4, appearance.MainMaxLines);
+        Assert.Equal(1, appearance.MaxLines);
+        var captions = new Captions();
+        string original = new string('読', 260) + "。";
+        captions.Apply([new Token(original, true)]);
+        Assert.Equal(original, CaptionTextLayout.FitRecentPhrase(captions.Japanese, s => s.Length <= 300, Captions.RecentLimit));
+        Assert.Equal(160, CaptionTextLayout.FitRecentPhrase(captions.Japanese, s => s.Length <= 300).Length);
+    }
+
+    [Fact]
     public void Captions_HandlesProvisionalRevisionEndpointsSimplifiedAndClear()
     {
         var captions = new Captions();

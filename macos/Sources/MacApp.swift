@@ -14,7 +14,7 @@ struct MacCaptionsApp: App {
                 .frame(minWidth: 535, minHeight: 620)
                 .onDisappear { session.finish() }
         }
-        .defaultSize(width: 960, height: 620)
+        .defaultSize(width: 1020, height: 680)
         MenuBarExtra("日语实时字幕", systemImage: "captions.bubble") {
             Button("开启实时字幕") {
                 openWindow(id: "home")
@@ -36,7 +36,8 @@ private struct MacHome: View {
     @State private var showOverlayOnStart = false
     @State private var startAfterKey = false
     @State private var keysVisible = false
-    @State private var editingAppearance = false
+    private enum SettingsPanel { case session, appearance }
+    @State private var panel: SettingsPanel?
     private let accent = Color(red: 0.10, green: 0.51, blue: 0.45)
     private var appearance = MacCaptionAppearance()
 
@@ -56,23 +57,39 @@ private struct MacHome: View {
                 Button("密钥", systemImage: "key") { keysVisible = true }
                     .disabled(session.stage != .idle)
             }
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 18) {
-                    previewCard.frame(minWidth: 405, maxWidth: .infinity)
-                    settingsCard.frame(width: 415)
-                }
-                VStack(alignment: .leading, spacing: 16) {
-                    previewCard
-                    settingsCard
+            HStack {
+                Label(session.stage == .idle ? "字幕预览" : "实时字幕", systemImage: "captions.bubble")
+                    .font(.headline)
+                Spacer()
+                panelButton("会话设置", .session)
+                panelButton("字幕外观", .appearance)
+            }
+            GeometryReader { area in
+                if panel == nil {
+                    readingArea
+                } else if area.size.width >= 880 {
+                    HStack(alignment: .top, spacing: 16) {
+                        readingArea
+                        ScrollView { settingsCard }.frame(width: 390)
+                    }
+                } else {
+                    VStack(spacing: 12) {
+                        readingArea
+                        ScrollView { settingsCard }
+                            .frame(height: min(area.size.height * 0.46, 280))
+                    }
                 }
             }
-            Spacer(minLength: 0)
             VStack(alignment: .leading, spacing: 10) {
                 Divider()
                 HStack {
                     Text(session.switchNotice.isEmpty ? session.status : session.switchNotice)
                         .foregroundStyle(.secondary).font(.callout).textSelection(.enabled)
                     Spacer()
+                    Button(overlay.active ? "收起置顶字幕" : "开启置顶字幕") {
+                        if overlay.active { overlay.stop() } else { overlay.start() }
+                    }
+                    .disabled(session.stage == .stopping)
                     if session.stage == .idle {
                         Button("测试收音") { session.begin(.probe) }
                         Button("开始翻译", systemImage: "play.fill") {
@@ -112,41 +129,28 @@ private struct MacHome: View {
         }) { KeySheet(session: session).padding().frame(width: 440, height: 300) }
     }
 
-    private var previewCard: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack {
-                Label(session.stage == .idle ? "字幕预览" : "实时字幕", systemImage: "captions.bubble")
-                    .font(.headline)
-                Spacer()
-                Button(overlay.active ? "收起置顶字幕" : "开启置顶字幕", systemImage: "macwindow.on.rectangle") {
-                    if overlay.active { overlay.stop() } else { overlay.start() }
-                }
-                .controlSize(.small)
-                .disabled(session.stage == .stopping)
-            }
-            MacCaptionDisplay(frame: session.stage == .idle ? MacCaptionDisplay.sample(session.displayMode) : session.frame)
-                .frame(minHeight: 145, maxHeight: 210)
-                .background(LinearGradient(colors: [Color.gray.opacity(0.2), Color.gray.opacity(0.55)],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing))
-                .clipShape(RoundedRectangle(cornerRadius: 15))
+    private func panelButton(_ title: String, _ target: SettingsPanel) -> some View {
+        Button {
+            panel = panel == target ? nil : target
+        } label: {
+            Label(title, systemImage: panel == target ? "chevron.up" : "chevron.down")
         }
+        .accessibilityValue(panel == target ? "已展开" : "已收起")
+    }
+
+    private var readingArea: some View {
+        MacCaptionDisplay(frame: session.stage == .idle ? MacCaptionDisplay.sample(session.displayMode) : session.frame,
+                          isMainWindow: true)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(white: 0.32))
+            .clipShape(RoundedRectangle(cornerRadius: 15))
     }
 
     private var settingsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Picker("设置", selection: $editingAppearance) {
-                    Text("会话设置").tag(false)
-                    Text("字幕外观").tag(true)
-                }.pickerStyle(.segmented).labelsHidden().fixedSize()
-                Spacer()
-                if editingAppearance {
-                    Button("恢复默认外观") { appearance.restoreDefaults() }.controlSize(.small)
-                }
-            }
-            Divider()
-            if editingAppearance {
+            if panel == .appearance {
                 MacAppearanceControls()
+                Button("恢复默认外观") { appearance.restoreDefaults() }.controlSize(.small)
             } else {
                 sessionControls
             }

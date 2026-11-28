@@ -34,6 +34,11 @@ enum CaptionDisplayMode: String, CaseIterable, Equatable {
 
 // Soniox sends confirmed text once and replaces the whole provisional suffix.
 struct Captions: Equatable {
+    #if MAC_CAPTIONS
+    static let recentLimit = 900
+    #else
+    static let recentLimit = 180
+    #endif
     private var original = ""
     private var translated = ""
     private(set) var japanese = ""
@@ -51,10 +56,10 @@ struct Captions: Equatable {
                 if token.is_final { original += token.text } else { draftOriginal += token.text }
             }
         }
-        original = String(original.suffix(180))
-        translated = String(translated.suffix(180))
-        japanese = String((original + draftOriginal).suffix(180))
-        chinese = Self.simplify(String((translated + draftTranslation).suffix(180)))
+        original = String(original.suffix(Self.recentLimit))
+        translated = String(translated.suffix(Self.recentLimit))
+        japanese = String((original + draftOriginal).suffix(Self.recentLimit))
+        chinese = Self.simplify(String((translated + draftTranslation).suffix(Self.recentLimit)))
     }
 
     // Remove unconfirmed provisional suffixes while keeping committed text intact.
@@ -231,13 +236,13 @@ enum CaptionTextLayout {
         }
 
         for start in sentenceStarts {
-            guard window.count - start >= minPreferredLength else { continue }
+            guard start >= rawStart, window.count - start >= minPreferredLength else { continue }
             let candidate = String(window[start...])
             if fits(candidate) { return candidate }
         }
 
         for start in clauseStarts {
-            guard window.count - start >= minPreferredLength else { continue }
+            guard start >= rawStart, window.count - start >= minPreferredLength else { continue }
             let candidate = String(window[start...])
             if fits(candidate) { return candidate }
         }

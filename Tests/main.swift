@@ -81,6 +81,14 @@ let dangling = "前文内容很长很长，，，。最终译文在这里"
 let fittedDangling = CaptionTextLayout.fitRecentPhrase(dangling, fits: charLimit(10))
 precondition(fittedDangling == "最终译文在这里")
 
+#if MAC_CAPTIONS
+var desktopCaptions = Captions()
+let longCaption = String(repeating: "読", count: 260) + "。"
+desktopCaptions.apply([token(longCaption, true)])
+precondition(CaptionTextLayout.fitRecentPhrase(desktopCaptions.japanese, maxWindow: Captions.recentLimit, fits: charLimit(300)) == longCaption)
+precondition(CaptionTextLayout.fitRecentPhrase(desktopCaptions.japanese, fits: charLimit(300)).count == 160)
+#endif
+
 // 4. Presentation: bilingual default, Chinese-only, reconnecting status over captions, probe mode
 precondition(CaptionPresentation.idleFrame(mode: .bilingual) == OverlayFrame(banner: nil, style: .bilingual(top: "日语原文", bottom: "简体中文译文")))
 precondition(CaptionPresentation.idleFrame(mode: .chineseOnly) == OverlayFrame(banner: nil, style: .chineseOnly(text: "简体中文译文", isPlaceholder: true)))
