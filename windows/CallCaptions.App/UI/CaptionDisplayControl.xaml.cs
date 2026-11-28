@@ -13,6 +13,8 @@ public partial class CaptionDisplayControl : UserControl
     private OverlayFrame _frame = CaptionPresentation.IdleFrame(CaptionDisplayMode.Bilingual);
     private CaptionAppearanceSettings _appearance = new();
 
+    public bool IsMainWindowDisplay { get; set; }
+
     public double CornerRadiusValue
     {
         get => RootBorder.CornerRadius.TopLeft;
@@ -147,7 +149,8 @@ public partial class CaptionDisplayControl : UserControl
 
         double lineHeight = new FormattedText("日", CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
             typeface, fontSize, Brushes.White, dpi).Height;
-        double allowedHeight = Math.Min(Math.Clamp(_appearance.MaxLines, 1, 4) * lineHeight, Math.Max(maxHeight, lineHeight));
+        int lines = IsMainWindowDisplay ? Math.Clamp(_appearance.MainMaxLines, 1, 8) : Math.Clamp(_appearance.MaxLines, 1, 4);
+        double allowedHeight = Math.Min(lines * lineHeight, Math.Max(maxHeight, lineHeight));
 
         return CaptionTextLayout.FitRecentPhrase(raw, candidate =>
         {
@@ -161,6 +164,6 @@ public partial class CaptionDisplayControl : UserControl
                 dpi);
             ft.MaxTextWidth = maxWidth;
             return ft.Height <= allowedHeight + 0.5;
-        });
+        }, maxWindow: IsMainWindowDisplay ? Captions.RecentLimit : 160);
     }
 }

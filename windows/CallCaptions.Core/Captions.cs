@@ -43,6 +43,7 @@ public static class CaptionDisplayModeExtensions
 // Soniox sends confirmed text once and replaces the whole provisional suffix.
 public sealed class Captions : IEquatable<Captions>
 {
+    public const int RecentLimit = 900;
     private const uint LcmapSimplifiedChinese = 0x02000000;
 
     private string _original = string.Empty;
@@ -78,10 +79,10 @@ public sealed class Captions : IEquatable<Captions>
             }
         }
 
-        _original = Suffix(origSb.ToString(), 180);
-        _translated = Suffix(transSb.ToString(), 180);
-        Japanese = Suffix(_original + draftOriginal, 180);
-        Chinese = Simplify(Suffix(_translated + draftTranslation, 180));
+        _original = Suffix(origSb.ToString(), RecentLimit);
+        _translated = Suffix(transSb.ToString(), RecentLimit);
+        Japanese = Suffix(_original + draftOriginal, RecentLimit);
+        Chinese = Simplify(Suffix(_translated + draftTranslation, RecentLimit));
     }
 
     // Remove unconfirmed provisional suffixes while keeping committed text intact.
@@ -341,14 +342,14 @@ public static class CaptionTextLayout
 
         foreach (int start in sentenceStarts)
         {
-            if (window.Length - start < minPreferredLength) continue;
+            if (start < rawStart || window.Length - start < minPreferredLength) continue;
             string candidate = window.Substring(start);
             if (fits(candidate)) return candidate;
         }
 
         foreach (int start in clauseStarts)
         {
-            if (window.Length - start < minPreferredLength) continue;
+            if (start < rawStart || window.Length - start < minPreferredLength) continue;
             string candidate = window.Substring(start);
             if (fits(candidate)) return candidate;
         }

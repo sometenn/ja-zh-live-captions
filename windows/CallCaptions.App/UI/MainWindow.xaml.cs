@@ -58,12 +58,13 @@ public partial class MainWindow : Window
 
     private void ArrangePanels()
     {
-        bool wide = (ActualWidth > 0 ? ActualWidth : Width) >= 900;
-        SettingsColumn.Width = new GridLength(wide ? 400 : 0);
-        Grid.SetColumn(SettingsCard, wide ? 1 : 0);
-        Grid.SetRow(SettingsCard, wide ? 1 : 2);
-        Grid.SetRowSpan(SettingsCard, wide ? 3 : 2);
-        PreviewSection.Margin = new Thickness(0, 0, wide ? 18 : 0, 18);
+        bool open = SettingsCard.Visibility == Visibility.Visible;
+        bool sideBySide = open && (ActualWidth > 0 ? ActualWidth : Width) >= 930;
+        SettingsColumn.Width = new GridLength(sideBySide ? 390 : 0);
+        SettingsRow.Height = open && !sideBySide ? new GridLength(0.85, GridUnitType.Star) : new GridLength(0);
+        Grid.SetColumn(SettingsCard, sideBySide ? 1 : 0);
+        Grid.SetRow(SettingsCard, sideBySide ? 2 : 3);
+        SettingsCard.Margin = sideBySide ? new Thickness(16, 0, 0, 0) : new Thickness(0, 12, 0, 0);
     }
 
     private async void SaveTranscript_Click(object sender, RoutedEventArgs e)
@@ -167,6 +168,7 @@ public partial class MainWindow : Window
 
             SourceSizeSlider.Value = appearance.SourceSize;
             TranslationSizeSlider.Value = appearance.TranslationSize;
+            MainMaxLinesSlider.Value = Math.Clamp(appearance.MainMaxLines, 1, 8);
             MaxLinesSlider.Value = Math.Clamp(appearance.MaxLines, 1, 4);
             OpacitySlider.Value = appearance.Opacity;
 
@@ -188,6 +190,7 @@ public partial class MainWindow : Window
         var appearance = _session.Settings.Appearance;
         SourceSizeLabel.Text = $"{(int)Math.Round(appearance.SourceSize)} pt";
         TranslationSizeLabel.Text = $"{(int)Math.Round(appearance.TranslationSize)} pt";
+        MainMaxLinesLabel.Text = $"{Math.Clamp(appearance.MainMaxLines, 1, 8)} 行";
         MaxLinesLabel.Text = $"{Math.Clamp(appearance.MaxLines, 1, 4)} 行";
         OpacityLabel.Text = $"{(int)Math.Round(appearance.Opacity)} %";
     }
@@ -258,13 +261,16 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SettingsTab_Changed(object sender, RoutedEventArgs e)
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!IsLoaded) return;
-        bool editingAppearance = AppearanceTabRadio.IsChecked == true;
-        SessionPanel.Visibility = editingAppearance ? Visibility.Collapsed : Visibility.Visible;
-        AppearancePanel.Visibility = editingAppearance ? Visibility.Visible : Visibility.Collapsed;
-        RestoreDefaultsButton.Visibility = editingAppearance ? Visibility.Visible : Visibility.Collapsed;
+        bool appearance = sender == AppearanceSettingsButton;
+        bool open = SettingsCard.Visibility != Visibility.Visible || appearance != (AppearancePanel.Visibility == Visibility.Visible);
+        SettingsCard.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        AppearancePanel.Visibility = appearance ? Visibility.Visible : Visibility.Collapsed;
+        SessionPanel.Visibility = appearance ? Visibility.Collapsed : Visibility.Visible;
+        SessionSettingsButton.Content = open && !appearance ? "收起会话设置" : "会话设置";
+        AppearanceSettingsButton.Content = open && appearance ? "收起字幕外观" : "字幕外观";
+        ArrangePanels();
     }
 
     private void ProviderRadio_Checked(object sender, RoutedEventArgs e)
@@ -302,6 +308,7 @@ public partial class MainWindow : Window
         if (_updatingUi || !IsLoaded) return;
         _session.Settings.Appearance.SourceSize = Math.Round(SourceSizeSlider.Value);
         _session.Settings.Appearance.TranslationSize = Math.Round(TranslationSizeSlider.Value);
+        _session.Settings.Appearance.MainMaxLines = (int)MainMaxLinesSlider.Value;
         _session.Settings.Appearance.MaxLines = (int)MaxLinesSlider.Value;
         _session.Settings.Appearance.Opacity = Math.Round(OpacitySlider.Value);
         ApplyAppearanceChange();

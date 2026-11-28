@@ -18,6 +18,7 @@ struct MacCaptionAppearance: DynamicProperty {
     @AppStorage("mac.caption.fontFamily") var family = ""
     @AppStorage("mac.caption.sourceSize") var sourceSize = 18.0
     @AppStorage("mac.caption.translationSize") var translationSize = 30.0
+    @AppStorage("mac.caption.mainMaxLines") var mainMaxLines = 4
     @AppStorage("mac.caption.maxLines") var maxLines = 1
     @AppStorage("mac.caption.ink") var ink = CaptionInk.white
     @AppStorage("mac.caption.opacity") var opacity = 92.0
@@ -30,6 +31,7 @@ struct MacCaptionAppearance: DynamicProperty {
     }
 
     func restoreDefaults() {
+        mainMaxLines = 4
         maxLines = 1
         family = ""
         sourceSize = 18
@@ -71,7 +73,11 @@ struct MacAppearanceControls: View {
                 }.pickerStyle(.segmented).labelsHidden()
             }
             GridRow {
-                Label("最多显示", systemImage: "text.alignleft")
+                Label("主窗口行数", systemImage: "text.alignleft")
+                Stepper("\(style.mainMaxLines) 行", value: style.$mainMaxLines, in: 1...8)
+            }
+            GridRow {
+                Label("置顶窗行数", systemImage: "text.alignleft")
                 Picker("最多显示", selection: style.$maxLines) {
                     ForEach(1...4, id: \.self) { Text("\($0) 行").tag($0) }
                 }.pickerStyle(.segmented).labelsHidden()
@@ -96,6 +102,7 @@ struct MacAppearanceControls: View {
 
 struct MacCaptionDisplay: View {
     let frame: OverlayFrame
+    var isMainWindow = false
     private var style = MacCaptionAppearance()
 
     static func sample(_ mode: CaptionDisplayMode) -> OverlayFrame {
@@ -133,8 +140,8 @@ struct MacCaptionDisplay: View {
     private func caption(_ text: String, width: CGFloat, height: CGFloat, translated: Bool) -> some View {
         let font = style.font(size: translated ? style.translationSize : style.sourceSize, translated: translated)
         let lineHeight = NSLayoutManager().defaultLineHeight(for: font)
-        let lines = min(style.maxLines, max(1, Int(height / max(1, lineHeight))))
-        let recent = CaptionTextLayout.fitRecentPhrase(text) { candidate in
+        let lines = min(isMainWindow ? style.mainMaxLines : style.maxLines, max(1, Int(height / max(1, lineHeight))))
+        let recent = CaptionTextLayout.fitRecentPhrase(text, maxWindow: isMainWindow ? Captions.recentLimit : 160) { candidate in
             let bounds = (candidate as NSString).boundingRect(
                 with: NSSize(width: max(1, width), height: .greatestFiniteMagnitude),
                 options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: font])

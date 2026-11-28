@@ -4,7 +4,7 @@
         xmlns:ui="clr-namespace:CallCaptions.App.UI"
         Title="日语实时字幕"
         Icon="pack://application:,,,/Assets/AppIcon.ico"
-        Width="960"
+        Width="1020"
         Height="690"
         MinWidth="545"
         MinHeight="640"
@@ -112,102 +112,49 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition x:Name="SettingsRow" Height="0" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <DockPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,18">
+        <DockPanel Grid.ColumnSpan="2" Margin="0,0,0,18">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="SaveTranscriptButton" Content="保存记录" Margin="0,0,8,0"
+                        Style="{StaticResource SecondaryButtonStyle}" Click="SaveTranscript_Click"/>
+                <Button x:Name="KeyButton" Content="密钥"
+                        Style="{StaticResource SecondaryButtonStyle}" Click="KeyButton_Click"/>
+            </StackPanel>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <Image Source="pack://application:,,,/Assets/AppIcon.png"
-                       Width="42"
-                       Height="42"
-                       Margin="0,0,12,0"
-                       RenderOptions.BitmapScalingMode="HighQuality" />
+                       Width="42" Height="42" Margin="0,0,12,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="日语实时字幕" FontSize="22" FontWeight="SemiBold" Foreground="#131D1D" />
-                    <TextBlock Text="日语 → 简体中文" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" />
+                    <TextBlock Text="日语实时字幕" FontSize="22" FontWeight="SemiBold" Foreground="#131D1D"/>
+                    <TextBlock Text="日语 → 简体中文" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                 </StackPanel>
             </StackPanel>
-
-            <Button x:Name="KeyButton"
-                    DockPanel.Dock="Right"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Content="密钥"
-                    Style="{StaticResource SecondaryButtonStyle}"
-                    Click="KeyButton_Click" />
         </DockPanel>
 
-        <!-- Preview section -->
-        <StackPanel x:Name="PreviewSection" Grid.Row="1" Margin="0,0,0,18">
-            <DockPanel Margin="0,0,0,8">
-                <TextBlock x:Name="PreviewTitleText"
-                           Text="字幕预览"
-                           FontSize="14.5"
-                           FontWeight="SemiBold"
-                           VerticalAlignment="Center" />
-                <Button x:Name="SaveTranscriptButton" Margin="10,0,0,0" Content="保存记录"
-                        Style="{StaticResource SecondaryButtonStyle}" Padding="12,4"
-                        Click="SaveTranscript_Click" />
-                <Button x:Name="ToggleOverlayButton"
-                        DockPanel.Dock="Right"
-                        HorizontalAlignment="Right"
-                        Content="开启置顶字幕"
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Padding="12,4"
-                        Click="ToggleOverlayButton_Click" />
-            </DockPanel>
-
-            <Border CornerRadius="15" ClipToBounds="True" MinHeight="145" MaxHeight="205">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#33808080" Offset="0" />
-                        <GradientStop Color="#8C808080" Offset="1" />
-                    </LinearGradientBrush>
-                </Border.Background>
-                <ui:CaptionDisplayControl x:Name="PreviewControl" CornerRadiusValue="15" MinHeight="145" />
-            </Border>
-        </StackPanel>
+        <DockPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,10">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                <Button x:Name="SessionSettingsButton" Content="会话设置" Margin="0,0,8,0"
+                        Style="{StaticResource SecondaryButtonStyle}" Click="SettingsButton_Click"/>
+                <Button x:Name="AppearanceSettingsButton" Content="字幕外观"
+                        Style="{StaticResource SecondaryButtonStyle}" Click="SettingsButton_Click"/>
+            </StackPanel>
+            <TextBlock x:Name="PreviewTitleText" Text="字幕预览" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+        </DockPanel>
+        <Border x:Name="ReadingArea" Grid.Row="2" CornerRadius="15" ClipToBounds="True" Background="#525252">
+            <ui:CaptionDisplayControl x:Name="PreviewControl" IsMainWindowDisplay="True" CornerRadiusValue="15"/>
+        </Border>
 
         <!-- Settings Card -->
-        <Border x:Name="SettingsCard" Grid.Row="2" Grid.RowSpan="2" VerticalAlignment="Top"
+        <Border x:Name="SettingsCard" Grid.Row="3" Visibility="Collapsed"
                 Background="{StaticResource CardBgBrush}"
                 BorderBrush="{StaticResource BorderBrushSubtle}"
                 BorderThickness="1"
                 CornerRadius="14"
                 Padding="16">
             <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
-                <DockPanel Margin="0,0,0,12">
-                    <Border Background="#E7ECEC" CornerRadius="8" Padding="3" HorizontalAlignment="Left">
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="SessionTabRadio"
-                                         GroupName="SettingsTab"
-                                         Content="会话设置"
-                                         IsChecked="True"
-                                         Style="{StaticResource SegmentedButtonStyle}"
-                                         Checked="SettingsTab_Changed" />
-                            <RadioButton x:Name="AppearanceTabRadio"
-                                         GroupName="SettingsTab"
-                                         Content="字幕外观"
-                                         Style="{StaticResource SegmentedButtonStyle}"
-                                         Checked="SettingsTab_Changed" />
-                        </StackPanel>
-                    </Border>
-
-                    <Button x:Name="RestoreDefaultsButton"
-                            DockPanel.Dock="Right"
-                            HorizontalAlignment="Right"
-                            Content="恢复默认外观"
-                            Style="{StaticResource SecondaryButtonStyle}"
-                            Padding="10,4"
-                            Visibility="Collapsed"
-                            Click="RestoreDefaultsButton_Click" />
-                </DockPanel>
-
-                <Separator Background="{StaticResource BorderBrushSubtle}" Margin="0,0,0,14" />
-
                 <!-- Session settings panel -->
                 <StackPanel x:Name="SessionPanel">
                     <Grid Margin="0,0,0,12">
@@ -337,7 +284,22 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="52" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="最多显示行数" VerticalAlignment="Center" FontSize="13" />
+                        <TextBlock Text="主窗口行数" VerticalAlignment="Center" FontSize="13" />
+                        <Slider x:Name="MainMaxLinesSlider"
+                                Grid.Column="1"
+                                Minimum="1" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center"
+                                ValueChanged="AppearanceSlider_ValueChanged" />
+                        <TextBlock x:Name="MainMaxLinesLabel" Grid.Column="2" HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="105" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="52" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="置顶窗行数" VerticalAlignment="Center" FontSize="13" />
                         <Slider x:Name="MaxLinesSlider"
                                 Grid.Column="1"
                                 Minimum="1" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"
@@ -361,6 +323,8 @@
                         <TextBlock x:Name="OpacityLabel" Grid.Column="2" HorizontalAlignment="Right"
                                    VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" />
                     </Grid>
+                    <Button Content="恢复默认外观" Margin="0,14,0,0" HorizontalAlignment="Left"
+                            Style="{StaticResource SecondaryButtonStyle}" Click="RestoreDefaultsButton_Click"/>
                 </StackPanel>
             </StackPanel></ScrollViewer>
         </Border>
@@ -369,14 +333,9 @@
         <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Margin="0,14,0,0">
             <Separator Background="{StaticResource BorderBrushSubtle}" Margin="0,0,0,12" />
             <DockPanel>
-                <TextBlock x:Name="StatusText"
-                           VerticalAlignment="Center"
-                           Foreground="{StaticResource TextSecondaryBrush}"
-                           FontSize="13"
-                           TextTrimming="CharacterEllipsis"
-                           MaxWidth="340" />
-
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                    <Button x:Name="ToggleOverlayButton" Content="开启置顶字幕" Margin="0,0,8,0"
+                            Style="{StaticResource SecondaryButtonStyle}" Click="ToggleOverlayButton_Click" />
                     <Button x:Name="ProbeButton"
                             Content="测试收音"
                             Style="{StaticResource SecondaryButtonStyle}"
@@ -392,6 +351,13 @@
                             Visibility="Collapsed"
                             Click="StopButton_Click" />
                 </StackPanel>
+                <TextBlock x:Name="StatusText"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="13"
+                           TextTrimming="CharacterEllipsis"
+                           Margin="0,0,6,0" />
+
             </DockPanel>
         </StackPanel>
     </Grid>
