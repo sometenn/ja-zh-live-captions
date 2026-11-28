@@ -25,6 +25,7 @@ data class SessionState(
     val switchNotice: String,
     val connectionState: Session.ConnectionState,
     val frame: OverlayFrame,
+    val hasTranscript: Boolean = false,
 )
 
 /**
@@ -110,6 +111,26 @@ class Session(
     private var drainTask: Job? = null
     private var reconnectTask: Job? = null
     private val pcmQueue = AudioBufferQueue(maxBytes = queueMaxBytes, maxAge = queueMaxAge)
+    private var transcriptSessionID: Long? = null
+    private val originalRecord = StringBuilder()
+    private val translationRecord = StringBuilder()
+
+    fun transcriptText(): String = "日语原文\n$originalRecord\n\n简体中文译文\n" +
+        IcuChineseSimplifier.simplify(translationRecord.toString()) + "\n"
+
+    private fun record(tokens: List<Token>, sid: Long) {
+        for (token in tokens) {
+            if (!token.isFinal || token.text.isEmpty() || token.text == "<end>" || token.text == "<fin>") continue
+            if (transcriptSessionID != sid) {
+                originalRecord.clear()
+                translationRecord.clear()
+                transcriptSessionID = sid
+            }
+            val target = if (token.translationStatus == "translation") translationRecord else originalRecord
+            target.append(token.text)
+        }
+    }
+
     private var captions = Captions()
     private var latestPeak: Int = 0
     private var lastSignal: Double? = null
@@ -327,6 +348,7 @@ class Session(
                 service.start(
                     receive = { tokens ->
                         if (sessionID == sid && connectionID == cid && client === service && stage == Stage.LISTENING) {
+                            record(tokens, sid)
                             captions.apply(tokens)
                             refresh()
                         }
@@ -582,6 +604,7 @@ class Session(
         switchNotice = switchNotice,
         connectionState = connectionState,
         frame = frame,
+        hasTranscript = transcriptSessionID != null,
     )
 
     private fun publishState() {

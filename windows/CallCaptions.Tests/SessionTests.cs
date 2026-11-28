@@ -459,12 +459,17 @@ public sealed class SessionTests
         captures[0].TriggerStart();
         Assert.True(await pump.WaitUntilAsync(() => services.Count == 1 && session.ConnectionState is ConnectionState.Connected));
 
+        var longText = new string('語', 240);
+        services[0].Deliver([Tok(longText, true), Tok("<end>", true), Tok("暂定", false)]);
+        await pump.FlushAsync();
         // Switch to Gemini mid-session
         session.SelectProvider(Provider.Gemini);
         Assert.True(await pump.WaitUntilAsync(() => services.Count == 2 && session.ConnectionState is ConnectionState.Connected));
         Assert.True(services[0].Closed);
         Assert.Equal(Provider.Gemini, session.Provider);
 
+        services[1].Deliver([Tok("翻譯", true, true)]);
+        await pump.FlushAsync();
         // Trigger reconnect sleep then revoke capture -> must cancel reconnect cleanly
         services[1].Disconnect(new CaptionError("中断", CaptionErrorKind.Transient));
         Assert.True(await pump.WaitUntilAsync(() => session.IsReconnecting));
@@ -475,5 +480,7 @@ public sealed class SessionTests
         await pump.FlushAsync();
         Assert.Equal(countBeforeRevoke, services.Count);
         Assert.Contains("系统已结束声音采集", session.Status);
+        Assert.True(session.HasTranscript);
+        Assert.Equal($"日语原文\r\n{longText}\r\n\r\n简体中文译文\r\n翻译\r\n", session.TranscriptText());
     }
 }
