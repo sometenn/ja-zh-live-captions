@@ -63,7 +63,7 @@ struct Captions: Equatable {
         chinese = Self.simplify(translated)
     }
 
-    private static func simplify(_ text: String) -> String {
+    static func simplify(_ text: String) -> String {
         text.applyingTransform(StringTransform("Traditional-Simplified"), reverse: false) ?? text
     }
 }

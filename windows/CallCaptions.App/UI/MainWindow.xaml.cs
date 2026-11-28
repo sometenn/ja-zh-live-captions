@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Markup;
@@ -63,6 +64,41 @@ public partial class MainWindow : Window
         Grid.SetRow(SettingsCard, wide ? 1 : 2);
         Grid.SetRowSpan(SettingsCard, wide ? 3 : 2);
         PreviewSection.Margin = new Thickness(0, 0, wide ? 18 : 0, 18);
+    }
+
+    private async void SaveTranscript_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_session.HasTranscript) return;
+        string snapshot = _session.TranscriptText();
+        var dialog = new Microsoft.Win32.SaveFileDialog {
+            FileName = $"字幕记录-{DateTime.Now:yyyyMMdd-HHmmss}.txt",
+            DefaultExt = ".txt",
+            Filter = "文本文件 (*.txt)|*.txt"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        string temporary = Path.Combine(Path.GetDirectoryName(dialog.FileName)!, Path.GetRandomFileName());
+        bool ownsTemporary = false;
+        try
+        {
+            await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                ownsTemporary = true;
+                await using var writer = new StreamWriter(stream, System.Text.Encoding.UTF8);
+                await writer.WriteAsync(snapshot);
+            }
+            File.Move(temporary, dialog.FileName, overwrite: true);
+            ownsTemporary = false;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            System.Windows.MessageBox.Show(this, error.Message, "保存记录失败");
+        }
+        finally
+        {
+            try { if (ownsTemporary) File.Delete(temporary); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     private void ShowHome()
@@ -162,6 +198,7 @@ public partial class MainWindow : Window
         bool isStopping = _session.Stage == SessionStage.Stopping;
         bool isPicking = _session.Stage == SessionStage.Picking;
 
+        SaveTranscriptButton.IsEnabled = _session.HasTranscript;
         KeyButton.IsEnabled = isIdle;
         ToggleOverlayButton.IsEnabled = !isStopping;
         ToggleOverlayButton.Content = _overlay.Active ? "收起置顶字幕" : "开启置顶字幕";

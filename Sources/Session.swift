@@ -67,6 +67,29 @@ final class Session: ObservableObject {
     private var reconnectTask: Task<Void, Never>?
     private var pcmQueue: AudioBufferQueue
     private var reconnectPolicy: ReconnectPolicy
+    @Published private(set) var hasTranscript = false
+    private var transcriptSessionID: UInt64?
+    private var originalRecord = ""
+    private var translationRecord = ""
+
+    func transcriptText() -> String {
+        let chinese = Captions.simplify(translationRecord)
+        return "日语原文\n" + originalRecord + "\n\n简体中文译文\n" + chinese + "\n"
+    }
+
+    private func record(_ tokens: [Token], sessionID: UInt64) {
+        for token in tokens where token.is_final && !token.text.isEmpty && token.text != "<end>" && token.text != "<fin>" {
+            if transcriptSessionID != sessionID {
+                originalRecord = ""
+                translationRecord = ""
+                transcriptSessionID = sessionID
+            }
+            if token.translation_status == "translation" { translationRecord += token.text }
+            else { originalRecord += token.text }
+            if !hasTranscript { hasTranscript = true }
+        }
+    }
+
     private var captions = Captions()
     private var latestPeak = 0
     private var lastSignal: TimeInterval?
@@ -284,6 +307,7 @@ final class Session: ObservableObject {
                           self.connectionID == cid,
                           self.client === service,
                           self.stage == .listening else { return }
+                    self.record(tokens, sessionID: sid)
                     self.captions.apply(tokens)
                     self.refresh()
                 }, failed: { [weak self, weak service] error in

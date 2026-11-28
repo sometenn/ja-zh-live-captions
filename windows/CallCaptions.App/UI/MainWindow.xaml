@@ -148,6 +148,9 @@
                            FontSize="14.5"
                            FontWeight="SemiBold"
                            VerticalAlignment="Center" />
+                <Button x:Name="SaveTranscriptButton" Margin="10,0,0,0" Content="保存记录"
+                        Style="{StaticResource SecondaryButtonStyle}" Padding="12,4"
+                        Click="SaveTranscript_Click" />
                 <Button x:Name="ToggleOverlayButton"
                         DockPanel.Dock="Right"
                         HorizontalAlignment="Right"

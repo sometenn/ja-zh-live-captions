@@ -52,6 +52,7 @@ private struct MacHome: View {
                     Text("日语 → 简体中文").foregroundStyle(.secondary).font(.subheadline)
                 }
                 Spacer()
+                SaveTranscriptButton(session: session)
                 Button("密钥", systemImage: "key") { keysVisible = true }
                     .disabled(session.stage != .idle)
             }

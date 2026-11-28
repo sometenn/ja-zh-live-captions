@@ -64,6 +64,7 @@ private struct Home: View {
                                  displayMode: session.displayMode,
                                  listening: session.stage == .listening,
                                  onAppear: { session.refreshPreviewIfIdle() })
+                    SaveTranscriptButton(session: session)
                     GroupBox("会话设置") {
                         VStack(alignment: .leading, spacing: 8) {
                             LabeledContent("翻译服务") {

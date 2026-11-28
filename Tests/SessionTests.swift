@@ -693,6 +693,11 @@ func testStopRestartProviderSwitchAndRevokeRaces() async {
     await flush()
     precondition(session.currentCaptions.japanese.isEmpty)
 
+    let longText = String(repeating: "日本語", count: 100)
+    services[2].deliver([tok(longText, true), tok("<end>", true), tok("修訂", true, true), tok("草稿", false)])
+    let expected = "日语原文\n古い" + longText + "\n\n简体中文译文\n旧译文修订\n"
+    precondition(session.transcriptText() == expected)
+
     // Race 3: Capture revocation while waiting in reconnect backoff -> stops cleanly, never opens new connection
     let delaysBeforeRevoke = sleeper.delays.count
     services[2].disconnect(CaptionError("transient", kind: .transient))
@@ -705,6 +710,18 @@ func testStopRestartProviderSwitchAndRevokeRaces() async {
     await flush()
     precondition(services.count == countBeforeRevoke, "Capture revocation must cancel reconnect without opening new connections")
     precondition(session.status.contains("系统已结束声音共享"))
+    precondition(session.hasTranscript && session.transcriptText() == expected)
+    session.begin(.probe)
+    session.finish()
+    require(await waitUntil { session.stage == .idle })
+    precondition(session.transcriptText() == expected)
+    session.begin(.translate)
+    captures.last!.triggerStart()
+    require(await waitUntil { session.connectionState == .connected })
+    services.last!.deliver([tok("次", true)])
+    precondition(session.transcriptText() == "日语原文\n次\n\n简体中文译文\n\n")
+    session.finish()
+    require(await waitUntil { session.stage == .idle })
     precondition(!overlay.active)
 }
 

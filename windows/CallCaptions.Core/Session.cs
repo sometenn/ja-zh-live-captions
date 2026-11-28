@@ -124,6 +124,32 @@ public sealed class Session : INotifyPropertyChanged
     public bool IsReconnecting => ConnectionState is ConnectionState.Reconnecting;
     public int QueuedAudioCount => _pcmQueue.Count;
     public int QueuedAudioBytes => _pcmQueue.TotalBytes;
+    private ulong? _transcriptSessionId;
+    private readonly System.Text.StringBuilder _originalRecord = new();
+    private readonly System.Text.StringBuilder _translationRecord = new();
+
+    public bool HasTranscript => _transcriptSessionId.HasValue;
+    public string TranscriptText() =>
+        $"日语原文\r\n{_originalRecord}\r\n\r\n简体中文译文\r\n{Captions.Simplify(_translationRecord.ToString())}\r\n";
+
+    private void Record(IReadOnlyList<Token> tokens, ulong sid)
+    {
+        bool hadTranscript = HasTranscript;
+        foreach (var token in tokens)
+        {
+            if (!token.IsFinal || string.IsNullOrEmpty(token.Text) || token.Text is "<end>" or "<fin>") continue;
+            if (_transcriptSessionId != sid)
+            {
+                _originalRecord.Clear();
+                _translationRecord.Clear();
+                _transcriptSessionId = sid;
+            }
+            var target = token.TranslationStatus == "translation" ? _translationRecord : _originalRecord;
+            target.Append(token.Text);
+        }
+        if (hadTranscript != HasTranscript) OnPropertyChanged(nameof(HasTranscript));
+    }
+
     public Captions CurrentCaptions => _captions.Clone();
 
     private readonly Func<AudioSource, IAudioCapture> _makeCapture;
@@ -509,6 +535,7 @@ public sealed class Session : INotifyPropertyChanged
                     {
                         if (_sessionId != sid || _connectionId != cid || !ReferenceEquals(_client, service) || Stage != SessionStage.Listening)
                             return;
+                        Record(tokens, sid);
                         _captions.Apply(tokens);
                         Refresh();
                     }),

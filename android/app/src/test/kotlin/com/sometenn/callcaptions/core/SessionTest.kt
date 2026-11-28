@@ -699,6 +699,11 @@ class SessionTest {
         runCurrent()
         assertTrue(session.currentCaptions.japanese.isEmpty())
 
+        val longText = "日本語".repeat(100)
+        services[2].deliver(listOf(tok(longText, true), tok("<fin>", true), tok("修訂", true, true), tok("草稿", false)))
+        val expected = "日语原文\n古い" + longText + "\n\n简体中文译文\n旧译文修订\n"
+        assertEquals(expected, session.transcriptText())
+
         // Race 3: Capture revocation while waiting in reconnect backoff -> stops cleanly, never opens new connection
         val delaysBeforeRevoke = sleeper.delays.count()
         services[2].disconnect(CaptionError("transient", kind = CaptionError.Kind.TRANSIENT))
@@ -715,6 +720,8 @@ class SessionTest {
         runCurrent()
         assertEquals(countBeforeRevoke, services.size)
         assertTrue(session.status.contains("系统已结束声音共享"))
+        assertTrue(session.state.value.hasTranscript)
+        assertEquals(expected, session.transcriptText())
         assertFalse(overlay.active)
     }
 }

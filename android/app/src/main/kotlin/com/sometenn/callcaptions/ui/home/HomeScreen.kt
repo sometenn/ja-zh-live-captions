@@ -86,6 +86,13 @@ fun HomeRoute(
     var tileNeedsKey by rememberSaveable { mutableStateOf(false) }
     var pendingCaptureMode by rememberSaveable { mutableStateOf<Session.Mode?>(null) }
 
+    val appContext = context.applicationContext
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        viewModel.finishExport(uri, appContext.contentResolver) { message ->
+            android.widget.Toast.makeText(appContext, message, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
     val audioPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) { results ->
@@ -207,6 +214,11 @@ fun HomeRoute(
         },
         onStartProbe = { startWithPermissions(Session.Mode.PROBE) },
         onFinish = viewModel::finish,
+        onSaveTranscript = {
+            viewModel.prepareExport()
+            val stamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
+            exportLauncher.launch("字幕记录-$stamp.txt")
+        },
         onToggleOverlay = {
             if (overlayState.active) {
                 viewModel.stopOverlay()
@@ -262,6 +274,7 @@ fun HomeScreen(
     onStartTranslate: () -> Unit,
     onStartProbe: () -> Unit,
     onFinish: () -> Unit,
+    onSaveTranscript: () -> Unit,
     onToggleOverlay: () -> Unit,
 ) {
     val isReconnecting = sessionState.connectionState is Session.ConnectionState.Reconnecting
@@ -320,6 +333,8 @@ fun HomeScreen(
                 displayMode = sessionState.displayMode,
                 appearance = overlayState.appearance,
             )
+
+            OutlinedButton(onClick = onSaveTranscript, enabled = sessionState.hasTranscript) { Text("保存记录") }
 
             OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {

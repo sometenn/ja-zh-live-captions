@@ -1,7 +1,14 @@
 package com.sometenn.callcaptions.ui.home
 
 import android.app.Activity
+import android.content.ContentResolver
 import android.content.Intent
+import android.net.Uri
+import androidx.lifecycle.viewModelScope
+import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.sometenn.callcaptions.capture.MediaProjectionConsentCoordinator
@@ -49,6 +56,35 @@ class HomeViewModel(
 
     fun selectDisplayMode(mode: CaptionDisplayMode) {
         session.selectDisplayMode(mode)
+    }
+
+    private var pendingExport: String? = null
+
+    fun prepareExport() {
+        pendingExport = session.transcriptText()
+    }
+
+    fun finishExport(uri: Uri?, resolver: ContentResolver, notify: (String) -> Unit) {
+        val snapshot = pendingExport
+        pendingExport = null
+        if (uri == null) return
+        if (snapshot == null) {
+            notify("记录已失效，请重新保存。")
+            return
+        }
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val stream = resolver.openOutputStream(uri, "wt") ?: throw IOException("无法打开文件")
+                    stream.bufferedWriter(Charsets.UTF_8).use { it.write(snapshot) }
+                }
+                notify("记录已保存")
+            } catch (error: IOException) {
+                notify("保存失败：" + error.localizedMessage)
+            } catch (error: SecurityException) {
+                notify("无权写入所选位置，请重新选择。")
+            }
+        }
     }
 
     fun beginTranslate() {
