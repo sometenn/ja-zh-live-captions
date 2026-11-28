@@ -10,7 +10,7 @@
     <AssemblyName>CallCaptions</AssemblyName>
     <ApplicationTitle>日语实时字幕</ApplicationTitle>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
